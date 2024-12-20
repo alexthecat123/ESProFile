@@ -15,6 +15,7 @@
 //#include <SD.h>
 #include <EEPROM.h>
 
+
 #define SD_CLK  5   // SCLK
 #define SD_MISO 34   // MISO
 #define SD_MOSI 2   // MOSI
@@ -28,7 +29,8 @@
 #define PRESPin 26
 #define PARITYPin 27
 
-uint8_t blockData[532]; //the array that holds the block that's currently being read or written
+uint8_t blockData[536]; //the array that holds the block that's currently being read or written
+uint32_t rawBlockData[536];
 
 uint8_t spareTable[48] = {0x50, 0x52, 0x4F, 0x46, 0x49, 0x4C, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x03, 0x98, 0x00, 0x26, 0x00, 0x02, 0x14, 0x20, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x43, 0x61, 0x6D, 0x65, 0x6F, 0x2F, 0x41, 0x70, 0x68, 0x69, 0x64, 0x20, 0x30, 0x30, 0x30, 0x31}; //the array that holds the spare table
 
@@ -40,10 +42,11 @@ const int readStatusOffset = 4;
 const int writeStatusOffset = 532;
 
 byte commandBuffer[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //the 6-byte command buffer
-uint32_t IRAM_ATTR prevState = 1;
-uint32_t IRAM_ATTR currentState = 1; //variables that are used for falling edge detection on the strobe line
+uint32_t prevState = 1;
+uint32_t currentState = 1; //variables that are used for falling edge detection on the strobe line
 int strobeIndex = 0; //an index used when counting strobe pulses
-volatile byte *pointer;
+byte *pointer;
+uint32_t *rawPointer;
 uint32_t byteNum;
 uint32_t startTime;
 const uint32_t timeout = 100000; //around 18ms
@@ -78,7 +81,7 @@ void setup(){
   pointer = 0;
   SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS);
   Serial.begin(115200); //start serial communications
-  clearScreen();
+  //clearScreen();
   nonce = EEPROM.read(5);
   EEPROM.write(5, nonce + 1);
   pinMode(red, OUTPUT);
@@ -748,6 +751,14 @@ void readDrive(){
     delay(1);
     //cli();
   }
+
+  for(int i = 0; i < 536; i++){
+    rawBlockData[i] = blockData[i] << busOffset;
+    printDataSpace(blockData[i]);
+    rawBlockData[i] |= (1 << BSYPin);
+    //printDataNoSpace(rawBlockData[i]);
+  }
+
   setParallelDir(1);
   delayMicroseconds(1); //set the bus into output mode
   strobeIndex = 0; //clear out the index
@@ -758,37 +769,54 @@ void readDrive(){
   currentTime = 0;
   continueLoop = true;
   for(int i = 0; i < readStatusOffset; i++){
-    blockData[i] = 0x00;
+    rawBlockData[i] = 0x00000000;
+    rawBlockData[i] |= (1 << BSYPin);
   }
-  pointer = blockData; //make the pointer point to the blockData array
-  sendData(*pointer++); //put the first status byte on the bus and increment the value of the pointer
+  uint32_t rawInvBlockData[536];
+  for(int i = 0; i < 536; i++){
+    rawInvBlockData[i] = ((uint8_t)~blockData[i]) << busOffset;
+  }
+  uint16_t i = 0;
+  //REG_WRITE(GPIO_OUT_W1TS_REG, rawBlockData[i]); // this
+  //REG_WRITE(GPIO_OUT_W1TC_REG, rawInvBlockData[i++]); // and these
+  REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
 
-
-  //attachInterrupt(STRBPin, readISR, FALLING);
-  attachInterrupt(CMDPin, exitLoopISR, FALLING);
-  //while(continueLoop);
-
+  noInterrupts();
 
   clearBSY(); //and raise BSY
   //bitRead(REG_READ(GPIO_IN_REG), STRBPin); // THIS
   //REG_WRITE(GPIO_OUT_W1TS_REG, parallelBits << busOffset);
   //REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~parallelBits << busOffset)); // AND THESE
-  while(continueLoop){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
+  
+  
+  /*while(continueLoop){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
     REG_WRITE(GPIO_OUT_W1TS_REG, *pointer << busOffset);
     REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~*pointer++ << busOffset));
-    //sendData(*pointer++);
     }
-    //currentTime++;
+    prevState = currentState;
+  }*/ // OLD VERSION OF LOOP//
+  bool currentSTRB = 1;
+  bool prevSTRB = 1;
+  while(i < 536){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
+    currentState = REG_READ(GPIO_IN_REG);
+    currentSTRB = bitRead(currentState, STRBPin);
+    //currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // could replace with REG_READ(GPIO_IN_REG) & (1 << STRBPin), but make the 1 << STRB a mask to remove the shift
+    if(currentSTRB == 1 and prevSTRB == 0){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
+      //printDataNoSpace(rawBlockData[i]);
+      //printDataSpace(~rawBlockData[i]);
+      //REG_WRITE(GPIO_OUT_W1TS_REG, rawBlockData[i]);
+      //REG_WRITE(GPIO_OUT_W1TC_REG, rawInvBlockData[i++]);
+      REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
+    }
+    prevSTRB = currentSTRB;
     prevState = currentState;
   }
 
-  //detachInterrupt(STRBPin);
-  detachInterrupt(CMDPin);
+  interrupts();
 
-
-  Serial.println(pointer - blockData);
+  Serial.println(i);
   pointer = 0;
 }
 
@@ -1192,10 +1220,10 @@ void initPins(){
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << RWPin);
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << STRBPin);
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PRESPin);
-  REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << PARITYPin);
+  REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PARITYPin);
 
   clearBSY();
-  clearPARITY();
+  //clearPARITY();
 }
 
 void sendData(byte parallelBits){ //makes it more user-friendly to put data on the bus
