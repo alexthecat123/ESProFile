@@ -29,12 +29,40 @@
 #define PRESPin 26
 #define PARITYPin 27
 
+#define TIMG1_WDT_WE 0x050D83AA1
+#define TIMG1_WDT_WE_REG 0x3FF60064
+
+#define TIMG1_WDT_CONF_REG 0x3FF60048
+#define TIMG1_WDT_EN 1 << 31
+
 uint8_t blockData[536]; //the array that holds the block that's currently being read or written
 uint32_t rawBlockData[536];
+uint32_t rawInvBlockData[536];
+
+bool parityArray[256] = {
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
+};
 
 uint8_t spareTable[48] = {0x50, 0x52, 0x4F, 0x46, 0x49, 0x4C, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x03, 0x98, 0x00, 0x26, 0x00, 0x02, 0x14, 0x20, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x43, 0x61, 0x6D, 0x65, 0x6F, 0x2F, 0x41, 0x70, 0x68, 0x69, 0x64, 0x20, 0x30, 0x30, 0x30, 0x31}; //the array that holds the spare table
 
 char fileName[256];
+
+uint16_t bufferIndex = 0;
 
 volatile uint32_t IRAM_ATTR continueLoop = true;
 
@@ -49,7 +77,7 @@ byte *pointer;
 uint32_t *rawPointer;
 uint32_t byteNum;
 uint32_t startTime;
-const uint32_t timeout = 100000; //around 18ms
+const uint32_t timeout = 1000000; //around 18ms
 uint32_t currentTime = 0;
 SdFat32 SDCard;
 File32 disk;
@@ -68,16 +96,15 @@ const uint16_t KVAutoboot = 1557;
 uint8_t buf[4096];
 char extension[255] = ".image";
 uint32_t uptime = 0; //if this isn't originally zero, then it resets each time we do the stuff mentioned on the next line down.
-//uint32_t pointerTest = &uptime; //why is this needed to keep uptime from resetting each time we use the four bytes before blockData[] to store status?
-
-//byte KVKey[20];
-//byte CorrectKVKey[20] = {0x6D, 0x75, 0x6F, 0x97, 0xCD, 0xDA, 0xDE, 0x35, 0xF2, 0x4E, 0x6B, 0xA5, 0x88, 0x2F, 0x1A, 0x28, 0x34, 0x5B, 0x2D, 0xFA};
 
 const int red = 32;
 const int green = 4;
-//const int blue = 33;
+
+bool selectorCommandRun = true;
 
 void setup(){
+  REG_WRITE(TIMG1_WDT_WE_REG, TIMG1_WDT_WE);
+  REG_CLR_BIT(TIMG1_WDT_CONF_REG, TIMG1_WDT_EN);
   pointer = 0;
   SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS);
   Serial.begin(115200); //start serial communications
@@ -89,7 +116,8 @@ void setup(){
   setPinModes();
   delay(10);
   initPins();
-  setLEDColor(1, 0, 0);
+  setLEDColor(1, 0);
+  Serial.println(F("ESProFile Emulator Mode - Version 1.0"));
   //pinMode(blue, OUTPUT);
   //pinMode(25, OUTPUT); PARITY CHIP ENABLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
   //digitalWrite(25, HIGH);
@@ -99,65 +127,19 @@ void setup(){
     while(1);
   }
   rootDir.open("/");
-  /*if(!KVStore.open("keyvaluestore.db", O_RDWR)){
-    Serial.println(F("Key-value store not found! Creating it now..."));
-    if(!KVStore.createContiguous("keyvaluestore.db", 34864620)){
-      Serial.println(F("Failed to create key-value store! Halting..."));
-      while(1);
-    }
-    Serial.println(F("Done!"));
-  }
-
-
-  Serial.println(F("Wiping key-value cache..."));
-  rootDir.remove("keyvaluecache.db");
-  if(!KVCache.createContiguous("keyvaluecache.db", 34864620)){
-    Serial.println(F("Failed to clear key-value cache! Halting..."));
-    while(1);
-  }
-  Serial.println(F("Done!"));*/
 
   if(!disk.open("profile.image", O_RDWR)){
     Serial.println(F("Default drive file profile.image not found! Halting..."));
     while(1);
   }
 
-  /*KVCache.seekSet(532*65530);
-  KVCache.read(KVKey, 20);
-  for(int i = 0; i < 20; i++){
-    printDataNoSpace(KVKey[i]);
-  }
-  Serial.println();
-  int correct = 0;
-  for(int i = 0; i < 65535; i++){
-    Serial.println(i);
-    KVCache.seekSet(i * 532);
-    KVCache.read(KVKey, 20);
-    for(int i = 0; i < 20; i++){
-      if(KVKey[i] == CorrectKVKey[i]){
-        correct++;
-      }
-      if(correct == 20){
-        break;
-      }
-      correct = 0;
-    }
-  }
-  Serial.print("Found it at index ");
-  Serial.println(KVCache.curPosition());*/
   updateSpareTable();
-  setLEDColor(0, 1, 0);
-  Serial.println(F("ArduinoFile is ready!"));
+  setLEDColor(0, 1);
+  Serial.println(F("ESProFile is ready!"));
   disk.seekSet(0);
   disk.read(blockData+readStatusOffset, 532);
-  //PORTE = PORTE & B11001111; //set the two pins that we're going to use for interrupts to inputs
-
-  //EICRB |= B00001010;
-  //EICRB &= B11111010; //set INT4 and INT5 to trigger on the falling edge
-  //EIMSK |= (0 << INT4);
-  //EIMSK |= (0 << INT5); //make sure that both interrupts are disabled initially (we actually never use INT5, but I might use it to speed things up in the future)
-  delay(10);
 }
+
 
 void IRAM_ATTR readISR(){
   REG_WRITE(GPIO_OUT_W1TS_REG, *pointer << busOffset);
@@ -194,123 +176,82 @@ void setPinModes(){
 void setParallelDir(bool dir){
   if(dir == 0){
     REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b11111111 << busOffset);
-    //DDRL = B00000000;
   }
   else if(dir == 1){
     REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b11111111 << busOffset);
-    //DDRL = B11111111;
   }
 }
 
 void loop() {
-  pointer = 0;
   clearBSY();
-  //initPins(); //set all pins to their idle states
-  //cli(); //disable interrupts to keep them from slowing things down
   while(readCMD() == 1); //wait for CMD to go low
-  /*setParallelDir(0);
-  delayMicroseconds(1);
-  if(readPRES() == 0){
-    //sei();
-    //delay(10);
-    Serial.println(F("Resetting drive..."));
-    //delay(10);
-    return;
-    //cli();
-  }
-  //cli();
-  Serial.println("here");*/
   setParallelDir(1);
   delayMicroseconds(1);
   sendData(0x01); //send an 0x01 to the host
-  //PORTC = PORTC & B11011111;
   setBSY(); //and lower BSY to acknowledge our presence
-  //startTime = millis();
   currentTime = 0;
   while(readCMD() == 0){
     currentTime++;
     if(currentTime >= timeout){
-      //sei();
-      delay(10);
       Serial.println("Timeout: Initial Handshake");
-      delay(10);
-      //cli();
       return;
     }
   } //wait for the host to raise CMD
   //while(readCMD() == 0);
   setParallelDir(0);
   delayMicroseconds(1); //set the bus into input mode so we can read from it
-  //PORTC = PORTC | B00100000;
 
   currentTime = 0;
   while(receiveData() != 0x55){ //wait for the host to respond with an 0x55 and timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      //sei();
-      delay(10);
-      Serial.println(F("Phase 1: Host didn't respond with a 55! Maybe the drive was reset?"));
-      delay(10);
-      //cli();
+      //Serial.println(F("Phase 1: Host didn't respond with a 55! Maybe the drive was reset?"));
       return;
     }
   }
-  //!!!TIMEOUT IF R/W IS HIGH!!!
 
-  //pointer = commandBuffer; //make the pointer point to the command buffer
-  pointer = commandBuffer; //make the pointer point to the blockData array
+  bufferIndex = 0;
+  for(int i = 0; i < 6; i++){
+    commandBuffer[i] = 0;
+  }
+  noInterrupts();
   clearBSY(); //if everything checks out, raise BSY
-  setLEDColor(0, 1, 0);
 
-
-  //continueLoop = true;
-  //attachInterrupt(STRBPin, writeISR, FALLING);
-  //attachInterrupt(CMDPin, exitLoopISR, FALLING);
-  //while(continueLoop);
-
-
-  //bitRead(REG_READ(GPIO_IN_REG), STRBPin); // THIS
-  //REG_WRITE(GPIO_OUT_W1TS_REG, parallelBits << busOffset);
-  //REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~parallelBits << busOffset)); // AND THESE
   while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for each of the remaining data bytes
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
-      *pointer++ = REG_READ(GPIO_IN_REG) >> busOffset;
-    //REG_WRITE(GPIO_OUT_W1TS_REG, *pointer << busOffset);
-    //REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~*pointer++ << busOffset));
-    //sendData(*pointer++);
+      commandBuffer[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
+      if(__builtin_parity(commandBuffer[bufferIndex++]) == 0){
+        clearPARITY();
+      }
+      else{
+        setPARITY();
+      }
     }
-    //currentTime++;
     prevState = currentState;
   }
 
-
-  //detachInterrupt(STRBPin);
-  //detachInterrupt(CMDPin);
-
-
-  /*while(readCMD() == 1){ //do this for each of the remaining data bytes and ((PINC | B11111011)) == B11111011
-    currentState = readSTRB();
-    if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
-      *pointer++ = receiveData();
-
-    }
-    currentTime++;
-    if(currentTime >= timeout){
-      Serial.println("Timeout: Command Bytes");
-      return;
-    }
-    prevState = currentState;
-  }*/
-
-  //sei();
-  Serial.println(pointer - commandBuffer);
-  pointer = 0;
-  for(int i = 0; i < 6; i++){
+  interrupts();
+  /*for(int i = 0; i < 6; i++){
     printDataNoSpace(commandBuffer[i]);
+  }*/
+  if(commandBuffer[0] == 0x00){
+    Serial.print("Read         Block: ");
   }
-  Serial.println();
-  delay(1);
+  else if(commandBuffer[0] == 0x01 or commandBuffer[0] == 0x02 or commandBuffer[0] == 0x03){
+    Serial.print("Write        Block: ");
+  }
+  else{
+    Serial.print("Unknown      Block: ");
+  }
+  printDataNoSpace(commandBuffer[1]);
+  printDataNoSpace(commandBuffer[2]);
+  printDataNoSpace(commandBuffer[3]);
+  Serial.print("        Retry Count: ");
+  printDataNoSpace(commandBuffer[4]);
+  Serial.print("        Spare Threshold: ");
+  printDataNoSpace(commandBuffer[5]);
+  //delay(1);
   //cli();
   if(commandBuffer[0] == 0x00){
     readDrive(); //if the first byte of the command is 0, we need to do a read
@@ -321,8 +262,6 @@ void loop() {
   //this emulator treats both writes and write-verifys exactly the same
 
   else{ //if we get some other command, print an error message and wait for the next handshake from the host
-    //sei();
-    delay(10);
     Serial.println(F("Bad Command!"));
     for(int i = 0; i < 6; i++){
       printDataNoSpace(commandBuffer[i]);
@@ -333,17 +272,10 @@ void loop() {
     delayMicroseconds(1);
     sendData(0x55);
     setBSY();
-    delay(10);
-    //cli();
   }
-  //sei();
-
-  //cli(); //if we don't enable and then disable interrupts here, weird behavior results for some reason
-
 }
 
 void readDrive(){
-  pointer = 0;
   setParallelDir(1);
   delayMicroseconds(1);
   sendData(0x02);
@@ -364,37 +296,24 @@ void readDrive(){
   while(receiveData() != 0x55){ //wait for the host to respond with an 0x55 and timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      //sei();
-      delay(10);
-      Serial.println(F("Read phase 2: Host didn't respond with a 55! Maybe the drive was reset?"));
-      delay(10);
-      //cli();
+      Serial.println(F(" - Read phase 2: Host didn't respond with a 55!"));
       return;
     }
   }
   byteNum = (commandBuffer[1] << 16 | commandBuffer[2] << 8 | commandBuffer[3]);
   if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFF and commandBuffer[3] == 0xFF){
+    Serial.println(" - Spare Table");
     for(int i = 0; i < 48; i++){
       blockData[i+readStatusOffset] = spareTable[i];
     }
     for(int i = 48; i < 532; i++){
       blockData[i+readStatusOffset] = 0xFF;
     }
-    Serial.println();
-    Serial.println("Block Data");
-    for(int i = 0; i < 532; i++){
-      printDataNoSpace(blockData[i+readStatusOffset]);
-    }
-    Serial.println();
-    Serial.println("Spare Table");
-    for(int i = 0; i < 48; i++){
-      printDataNoSpace(spareTable[i]);
-    }
-    Serial.println();
   }
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFD){ //emulator status
-    setLEDColor(0, 0, 1); //fix LED issue
-    //sei();
+    Serial.println(F(" - Selector: Sending emulator status..."));
+    setLEDColor(1, 1); //fix LED issue
+    uptime = esp_timer_get_time() / 1000000;
     char days[5];
     char hours[3];
     char minutes[3];
@@ -415,13 +334,14 @@ void readDrive(){
     for(int i = 8; i < 10; i++){ //uptime
       blockData[i+readStatusOffset] = seconds[i % 2];
     }
-    if(nonce != oldNonce){
+    if(selectorCommandRun == true){
+      selectorCommandRun = false;
       freeSpace = SDCard.vol()->freeClusterCount() * SDCard.vol()->sectorsPerCluster() * 512;
     }
+    else{
+      delay(10); // just wait so that the user can see the LED light up
+    }
 
-    uptime += 2;
-
-    oldNonce = nonce;
     char bytesFree[16];
     ultoa(freeSpace, bytesFree, 10);
     int i;
@@ -453,11 +373,10 @@ void readDrive(){
     for(int i = 56; i < 532; i++){ //null terminate for the rest of the block
       blockData[i+readStatusOffset] = 0x00;
     }
-    //cli();
   }
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFE){ //get file info
-    setLEDColor(0, 0, 1); //fix LED issue
-    //sei();
+    setLEDColor(1, 1); //fix LED issue
+    selectorCommandRun = true;
     fileCount = 0;
     rootDir.rewind();
     while(scratchFile.openNext(&rootDir, O_RDONLY)){
@@ -489,6 +408,9 @@ void readDrive(){
         //scratchFile.getModifyDateTime(dateModified, timeModified);
         scratchFile.close();
       }
+      Serial.print(F(" - Selector: Sending file information for file "));
+      Serial.print(fileName);
+      Serial.println(F("..."));
       for(int i = 6; i < 20; i++){ //last modified time
         //Serial.print(dateModified[i - 6]);
         //Serial.print(" ");
@@ -575,55 +497,33 @@ void readDrive(){
         blockData[i+readStatusOffset] = 0x00;
       }
     }
-    delay(10);
-    //cli();
   }
 
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFF){ //retrieve key-value entry from the cache
-    setLEDColor(0, 0, 1); //fix LED issue
-    //sei();
+    selectorCommandRun = true;
+    setLEDColor(1, 1); //fix LED issue
     if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x43){
-      Serial.println(F("Loaded moniker/autoboot key-value pair!"));
+      Serial.println(F(" - Selector: Sending device moniker..."));
       for(int i = 0; i < 532; i++){
         blockData[i+readStatusOffset] = EEPROM.read(KVMoniker + i);
       }
     }
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x61){
-      Serial.println(F("Loaded autoboot password key-value pair!"));
+      Serial.println(F(" - Selector: Sending autoboot status..."));
       for(int i = 0; i < 532; i++){
         blockData[i+readStatusOffset] = EEPROM.read(KVAutoboot + i);
       }
     }
     else{
-      Serial.println(F("Error: Unsupported key-value load operation!"));
+      Serial.println(F(" - Selector Error: Unsupported key-value load operation!"));
     }
-    //Moniker address is 5343 in the cache and 53656C6563746F723A20636F6E666967202020D7 in the store
-
-    //Serial.println(F("Warning: The attempted key-value cache read failed because key-value operations are not currently supported!"));
-    /*KVCache.seekSet((commandBuffer[4] << 8) | (commandBuffer[5]));
-    Serial.print(F("Reading entry "));
-    printDataNoSpace(commandBuffer[4]);
-    printDataNoSpace(commandBuffer[5]);
-    Serial.println(F(" from the key-value cache..."));
-    KVCache.read(blockData, 532);
-    Serial.print(F("Key: "));
-    for(int i = 0; i < 20; i++){
-      printDataNoSpace(blockData[i]);
-    }
-    Serial.println();
-    Serial.print(F("Value: "));
-    for(int i = 20; i < 532; i++){
-      printDataNoSpace(blockData[i]);
-    }
-    Serial.println();*/
-    delay(1);
-    //cli();
   }
 
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFC){ //selector rescue
-    setLEDColor(0, 0, 1); //fix LED issue
-    //sei();
+    selectorCommandRun = true;
+    setLEDColor(1, 1); //fix LED issue
     if(commandBuffer[4] == 0xFF and commandBuffer[5] == 0xFF){ //replace selector with a spare from the rescue folder
+      Serial.println(F(" - Selector: Beginning 'Selector Rescue' procedure..."));
       int replacementIndex = 0;
       char buffer[30];
       sprintf(buffer, "profile-backup-%d.image", replacementIndex);
@@ -631,8 +531,9 @@ void readDrive(){
         replacementIndex++;
         sprintf(buffer, "profile-backup-%d.image", replacementIndex);
       }
+      Serial.print(F("Backing up current Selector to "));
       Serial.print(replacementIndex);
-      Serial.println(F(" does not exist! Creating it..."));
+      Serial.println(F("..."));
       disk.close();
       if(!sourceFile.open("profile.image", O_RDWR)){
         Serial.println(F("Error opening current profile.image!"));
@@ -653,7 +554,7 @@ void readDrive(){
         }
         nonce = EEPROM.read(5);
         EEPROM.write(5, nonce + 1);
-        Serial.println(F("Done backing up old image and restoring new image!"));
+        Serial.println(F("Done with Selector Rescue procedure!"));
       }
       sourceFile.close();
       destFile.close();
@@ -665,10 +566,10 @@ void readDrive(){
     else if((commandBuffer[4] >> 4) == 0x00){ //send a block of a selector ProFile image
       byteNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532;
       if(!sourceFile.open("/rescue/selector.image", O_RDONLY)){
-        Serial.println(F("Error opening backup Selector ProFile image!"));
+        Serial.println(F(" - Selector: Error opening backup Selector ProFile image!"));
       }
       else if((byteNum + 531) >= sourceFile.fileSize()){
-        Serial.println(F("Error: Block is past the end of the file!"));
+        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
         for(int i = 0; i < 532; i++){
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -676,7 +577,7 @@ void readDrive(){
       else{
         disk.seekSet(byteNum);
         sourceFile.read(blockData+readStatusOffset, 532);
-        Serial.print(F("Successfully read block "));
+        Serial.print(F(" - Selector: Sending block "));
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
         Serial.println(F(" of backup Selector ProFile image!"));
@@ -686,10 +587,10 @@ void readDrive(){
     else if((commandBuffer[4] >> 4) == 0x01){ //send a block of a selector 3.5 inch floppy image
       byteNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532;
       if(!sourceFile.open("/rescue/selector.3.5inch.dc42", O_RDONLY)){
-        Serial.println(F("Error opening backup Selector 3.5 image!"));
+        Serial.println(F(" - Selector: Error opening backup Selector 3.5 image!"));
       }
       else if((byteNum + 531) >= sourceFile.fileSize()){
-        Serial.println(F("Error: Block is past the end of the file!"));
+        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
         for(int i = 0; i < 532; i++){
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -697,20 +598,20 @@ void readDrive(){
       else{
         disk.seekSet(byteNum);
         sourceFile.read(blockData+readStatusOffset, 532);
-        Serial.print(F("Successfully read block "));
+        Serial.print(F(" - Selector: Sending block "));
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
-        Serial.println(F(" of backup Selector 3.5 DC42 image!"));
+        Serial.println(F(" of backup Selector 3.5 DC42 image..."));
       }
       sourceFile.close();
     }
     else if((commandBuffer[4] >> 4) == 0x02){ //send a block of a selector Twiggy image
       byteNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532;
       if(!sourceFile.open("/rescue/selector.twiggy.dc42", O_RDONLY)){
-        Serial.println(F("Error opening backup Selector Twiggy image!"));
+        Serial.println(F(" - Selector: Error opening backup Selector Twiggy image!"));
       }
       else if((byteNum + 531) >= sourceFile.fileSize()){
-        Serial.println(F("Error: Block is past the end of the file!"));
+        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
         for(int i = 0; i < 532; i++){
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -718,106 +619,83 @@ void readDrive(){
       else{
         disk.seekSet(byteNum);
         sourceFile.read(blockData+readStatusOffset, 532);
-        Serial.print(F("Successfully read block "));
+        Serial.print(F(" - Selector: Sending block "));
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
-        Serial.println(F(" of backup Selector Twiggy DC42 image!"));
+        Serial.println(F(" of backup Selector Twiggy DC42 image..."));
       }
       sourceFile.close();
     }
     else{
-      Serial.println(F("Bad selector rescue command!"));
+      Serial.println(F(" - Selector: Bad 'Selector Rescue' command!"));
       for(int i = 0; i < 532; i++){
         blockData[i+readStatusOffset] = 0x00;
       }
     }
-    delay(10);
-    //cli();
   }
   else if(byteNum < disk.fileSize()){
-    //sei();
     byteNum *= 532;
     disk.seekSet(byteNum);
     disk.read(blockData+readStatusOffset, 532);
-    delay(1);
-    //cli();
+    Serial.println();
   }
   else{
-    //sei();
-    Serial.println(F("Error: Requested block is out of range!"));
+    Serial.println(F(" - Error: Requested block is out of range!"));
     for(int i = 0; i < 532; i++){
       blockData[i+readStatusOffset] = 0x00;
     }
-    delay(1);
-    //cli();
   }
 
   for(int i = 0; i < 536; i++){
     rawBlockData[i] = blockData[i] << busOffset;
-    printDataSpace(blockData[i]);
-    rawBlockData[i] |= (1 << BSYPin);
+    //printDataSpace(blockData[i]);
+    //rawBlockData[i] |= (1 << BSYPin);
     //printDataNoSpace(rawBlockData[i]);
   }
 
   setParallelDir(1);
   delayMicroseconds(1); //set the bus into output mode
-  strobeIndex = 0; //clear out the index
-  /*for(byte *i = blockData - 4; i < blockData; i++){
-    *i = 0x00;
-  }*/
-  //startTime = millis();
-  currentTime = 0;
-  continueLoop = true;
+
+
   for(int i = 0; i < readStatusOffset; i++){
-    rawBlockData[i] = 0x00000000;
-    rawBlockData[i] |= (1 << BSYPin);
+    blockData[i] = 0x00;
+    //rawBlockData[i] = 0x00000000;
+    //rawBlockData[i] |= (1 << BSYPin);
   }
-  uint32_t rawInvBlockData[536];
-  for(int i = 0; i < 536; i++){
+  /*for(int i = 0; i < 536; i++){
     rawInvBlockData[i] = ((uint8_t)~blockData[i]) << busOffset;
+  }*/
+
+  bufferIndex = 0;
+  if(__builtin_parity(blockData[bufferIndex]) == 0){
+    clearPARITY();
   }
-  uint16_t i = 0;
-  //REG_WRITE(GPIO_OUT_W1TS_REG, rawBlockData[i]); // this
-  //REG_WRITE(GPIO_OUT_W1TC_REG, rawInvBlockData[i++]); // and these
-  REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
+  else{
+    setPARITY();
+  }
+  sendData(blockData[bufferIndex++]);
 
   noInterrupts();
 
   clearBSY(); //and raise BSY
-  //bitRead(REG_READ(GPIO_IN_REG), STRBPin); // THIS
-  //REG_WRITE(GPIO_OUT_W1TS_REG, parallelBits << busOffset);
-  //REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~parallelBits << busOffset)); // AND THESE
-  
-  
-  /*while(continueLoop){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
+
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
-    if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
-    REG_WRITE(GPIO_OUT_W1TS_REG, *pointer << busOffset);
-    REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~*pointer++ << busOffset));
+    if(currentState == 1 and prevState == 0){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
+      if(__builtin_parity(blockData[bufferIndex]) == 0){
+        clearPARITY();
+      }
+      else{
+        setPARITY();
+      }
+      REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset);
+      REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset));
+      //REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
     }
-    prevState = currentState;
-  }*/ // OLD VERSION OF LOOP//
-  bool currentSTRB = 1;
-  bool prevSTRB = 1;
-  while(i < 536){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
-    currentState = REG_READ(GPIO_IN_REG);
-    currentSTRB = bitRead(currentState, STRBPin);
-    //currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // could replace with REG_READ(GPIO_IN_REG) & (1 << STRBPin), but make the 1 << STRB a mask to remove the shift
-    if(currentSTRB == 1 and prevSTRB == 0){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
-      //printDataNoSpace(rawBlockData[i]);
-      //printDataSpace(~rawBlockData[i]);
-      //REG_WRITE(GPIO_OUT_W1TS_REG, rawBlockData[i]);
-      //REG_WRITE(GPIO_OUT_W1TC_REG, rawInvBlockData[i++]);
-      REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
-    }
-    prevSTRB = currentSTRB;
     prevState = currentState;
   }
 
   interrupts();
-
-  Serial.println(i);
-  pointer = 0;
 }
 
 void writeDrive(byte response){
@@ -829,9 +707,7 @@ void writeDrive(byte response){
   while(readCMD() == 0){
     currentTime++;
     if(currentTime >= timeout){
-      /*sei();
-      Serial.println("Timeout: Write Command Confirmation");
-      cli();*/
+      Serial.println(" - Timeout: Write Command Confirmation");
       return;
     }
   } //wait for the host to raise CMD
@@ -841,48 +717,32 @@ void writeDrive(byte response){
   while(receiveData() != 0x55){ //wait for the host to respond with an 0x55 and timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      //sei();
-      delay(10);
-      Serial.println(F("Write phase 2: Host didn't respond with a 55! Maybe the drive was reset?"));
-      delay(10);
-      //cli();
+      Serial.println(F(" - Write phase 2: Host didn't respond with a 55!"));
       return;
     }
   }
-  pointer = 0;
 
-  
-  for(int i = writeStatusOffset; i < 536; i++){
-    blockData[i] = 0x00;
-  }
-  pointer = blockData; //make the pointer point toward our blockData array
-  currentTime = 0;
-  continueLoop = true;
-  attachInterrupt(STRBPin, writeISR, FALLING);
-  attachInterrupt(CMDPin, exitLoopISR, FALLING);
+  bufferIndex = 0;
+  noInterrupts();
   clearBSY(); //if everything looks good, raise BSY
-  while(continueLoop);
-  detachInterrupt(STRBPin);
-  detachInterrupt(CMDPin);
-  Serial.println(pointer - blockData);
+ 
   
-  /*while(readCMD() == 1){ //do this for each of the 532 bytes that we're receiving
-    currentState = readSTRB();
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for each of the 532 bytes that we're receiving
+    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //when we detect a falling edge on the strobe line, read the data bus, save it contents into the data array, and increment the pointer
-      sendData(*pointer++);
+      blockData[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
+      if(__builtin_parity(blockData[bufferIndex++]) == 0){
+        clearPARITY();
+      }
+      else{
+        setPARITY();
+      }
     }
     prevState = currentState;
-  }*/
-  currentTime = 0;
-  while(readCMD() == 1){
-    currentTime++;
-    if(currentTime >= timeout){
-      /*sei();
-      Serial.println("Timeout: Write Command Second Handshake");
-      cli();*/
-      return;
-    }
-  } //wait for the host to lower CMD
+  }
+
+  interrupts();
+
   setParallelDir(1);
   delayMicroseconds(1);
   sendData(0x06); //send the appropriate response of 0x06
@@ -903,26 +763,22 @@ void writeDrive(byte response){
   while(receiveData() != 0x55){ //wait for the host to respond with an 0x55 and timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      //sei();
-      delay(10);
-      Serial.println(F("Write phase 3: Host didn't respond with a 55! Maybe the drive was reset?"));
-      delay(10);
-      //cli();
+      Serial.println(F(" - Write phase 3: Host didn't respond with a 55!"));
       return;
     }
   }
   bool halt = false;
   byteNum = (commandBuffer[1] << 16 | commandBuffer[2] << 8 | commandBuffer[3]);
   if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFF and commandBuffer[3] == 0xFD and commandBuffer[4] == 0xFE and commandBuffer[5] == 0xAF){ //built-in command
-    //sei();
+    selectorCommandRun = true;
     if(blockData[0] == 0x48 and blockData[1] == 0x41 and blockData[2] == 0x4C and blockData[3] == 0x54){ //halt
       halt = true;
-      Serial.println(F("Halting emulator..."));
-      setLEDColor(1, 1, 1);
+      Serial.println(F(" - Selector: Halting emulator..."));
+      setLEDColor(1, 0);
     }
     if(blockData[0] == 0x49 and blockData[1] == 0x4D and blockData[2] == 0x41 and blockData[3] == 0x47 and blockData[4] == 0x45 and blockData[5] == 0x3A){ //switch image files
-      setLEDColor(0, 0, 1); //fix LED issue
-      Serial.print(F("Switching to image file "));
+      setLEDColor(1, 1); //fix LED issue
+      Serial.print(F(" - Selector: Switching to image file "));
       int i = 6;
       while(1){
         if(blockData[i] == 0x00){
@@ -933,51 +789,52 @@ void writeDrive(byte response){
         Serial.write(blockData[i]);
         i++;
       }
+      Serial.print("...");
     }
-    Serial.println();
     disk.close();
     if(!disk.open(fileName, O_RDWR)){
-      Serial.println(F("Error opening image file!"));
+      Serial.print(F(" - Error opening image file!"));
       disk.close();
       if(!disk.open("profile.image", O_RDWR)){
-        Serial.println(F("Failed to reopen profile.image!"));
+        Serial.print(F(" And failed to reopen profile.image!"));
       }
       updateSpareTable();
     }
     else{
       updateSpareTable();
-      Serial.println(F("Success!"));
     }
-    delay(10);
+    Serial.println();
     //cli();
   }
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFF){
-    setLEDColor(0, 0, 1); //fix LED issue
-    //sei();
-    if(commandBuffer[4] == 0xFF and commandBuffer[5] == 0xFF);
+    selectorCommandRun = true;
+    setLEDColor(1, 1); //fix LED issue
+    if(commandBuffer[4] == 0xFF and commandBuffer[5] == 0xFF){
+      Serial.println(" - Selector: Writing to key-value store...");
+    }
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x43){
-      Serial.println(F("Wrote to moniker/autoboot key-value pair!"));
+      Serial.println(F(" - Selector: Updating device moniker..."));
       for(int i = 0; i < 532; i++){
         EEPROM.write(KVMoniker + i, blockData[i]);
       }
     }
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x61){
-      Serial.println(F("Wrote to autoboot password key-value pair!"));
+      Serial.println(F(" - Selector: Updating device autoboot status..."));
       for(int i = 0; i < 532; i++){
         EEPROM.write(KVAutoboot + i, blockData[i]);
       }
     }
     else{
-      Serial.println(F("Error: Unsupported key-value write operation!"));
+      Serial.println(F(" - Selector Error: Unsupported key-value write operation!"));
     }
-    delay(1);
     //cli();
   }
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFE){ //FS commands
-    setLEDColor(0, 0, 1); //fix LED issue
+    selectorCommandRun = true;
+    setLEDColor(1, 1); //fix LED issue
     //sei();
     if(commandBuffer[4] == 0x63 and commandBuffer[5] == 0x70){ //copy
-      Serial.print(F("Copying "));
+      Serial.print(F(" - Selector: Copying "));
       int i = 0;
       while(1){
         if(blockData[i] == 0x00){
@@ -990,7 +847,7 @@ void writeDrive(byte response){
       }
       i++;
       if(!sourceFile.open(fileName, O_RDONLY)){
-        Serial.println(F("Error opening source file!"));
+        Serial.println(F(" (Error opening source file)"));
       }
       else{
         Serial.print(F(" to "));
@@ -1004,10 +861,11 @@ void writeDrive(byte response){
           Serial.write(fileName[i - offset]);
           i++;
         }
-        Serial.print(F(" size "));
-        Serial.println(sourceFile.fileSize());
+        Serial.print(F(" with size "));
+        Serial.print(sourceFile.fileSize());
+        Serial.print("; this may take a while...");
         if(!destFile.createContiguous(fileName, sourceFile.fileSize())){
-          Serial.println(F("Error creating destination file!"));
+          Serial.println(F(" Error creating destination file"));
         }
         else{
           size_t n;
@@ -1016,15 +874,15 @@ void writeDrive(byte response){
           }
           nonce = EEPROM.read(5);
           EEPROM.write(5, nonce + 1);
-          Serial.println(F("Done!"));
+          Serial.println(F(" Success!"));
         }
       }
       sourceFile.close();
       destFile.close();
     }
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x6B){ //create new image, normal
-      setLEDColor(0, 0, 1); //fix LED issue
-      Serial.print(F("Making new 5MB image called "));
+      setLEDColor(1, 1); //fix LED issue
+      Serial.print(F(" - Selector: Creating new 5MB image called "));
       int i = 0;
       while(1){
         if(blockData[i] == 0x00){
@@ -1034,20 +892,18 @@ void writeDrive(byte response){
         fileName[i] = blockData[i];
         i++;
       }
-      Serial.println();
+      Serial.print("...");
       if(!destFile.createContiguous(fileName, 5175296)){
-        Serial.println(F("Error creating destination file!"));
+        Serial.print(F(" Error creating destination file!"));
       }
-      else{
-        Serial.println(F("Done!"));
-      }
+      Serial.println();
       nonce = EEPROM.read(5);
       EEPROM.write(5, nonce + 1);
       destFile.close();
     }
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x78){ //create new image, extended
-      setLEDColor(0, 0, 1); //fix LED issue
-      Serial.print(F("Making new image of size "));
+      setLEDColor(1, 1); //fix LED issue
+      Serial.print(F(" - Selector: Creating new image of size "));
       int i = 0;
       while(1){
         if(blockData[i] == 0x00){
@@ -1071,21 +927,19 @@ void writeDrive(byte response){
         Serial.write(fileName[i - offset]);
         i++;
       }
-      Serial.println();
+      Serial.print("...");
       if(!destFile.createContiguous(fileName, size)){
-        Serial.println(F("Error creating destination file!"));
+        Serial.print(F(" Error creating destination file!"));
       }
-      else{
-        Serial.println(F("Done!"));
-      }
+      Serial.println();
       nonce = EEPROM.read(5);
       EEPROM.write(5, nonce + 1);
       destFile.close();
     }
     else if(commandBuffer[4] == 0x72 and commandBuffer[5] == 0x6D){ //delete
-      setLEDColor(0, 0, 1); //fix LED issue
+      setLEDColor(1, 1); //fix LED issue
       int i = 0;
-      Serial.print(F("Deleting file "));
+      Serial.print(F(" - Selector: Deleting file "));
       while(1){
         if(blockData[i] == 0x00){
           fileName[i] = 0x00;
@@ -1095,16 +949,17 @@ void writeDrive(byte response){
         Serial.write(blockData[i]);
         i++;
       }
-      Serial.println();
+      Serial.print("...");
       if(!rootDir.remove(fileName)){
-        Serial.println(F("Failed to delete file!"));
+        Serial.print(F(" Failed to delete file!"));
       }
+      Serial.println();
       nonce = EEPROM.read(5);
       EEPROM.write(5, nonce + 1);
     }
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x76){ //move aka rename
-      setLEDColor(0, 0, 1); //fix LED issue
-      Serial.print(F("Renaming "));
+      setLEDColor(1, 1); //fix LED issue
+      Serial.print(F(" - Selector: Renaming "));
       int i = 0;
       while(1){
         if(blockData[i] == 0x00){
@@ -1118,7 +973,7 @@ void writeDrive(byte response){
       i++;
       if(!sourceFile.open(fileName, O_RDWR)){
         Serial.println();
-        Serial.println(F("Error opening source file!"));
+        Serial.println(F(" (Error opening source file)"));
       }
       else{
         Serial.print(" to ");
@@ -1132,17 +987,18 @@ void writeDrive(byte response){
           Serial.write(blockData[i]);
           i++;
         }
-        Serial.println();
+        Serial.print("...");
         if(!sourceFile.rename(fileName)){
-          Serial.println(F("Error renaming file!"));
+          Serial.print(F(" Error renaming file!"));
         }
+        Serial.println();
       }
       sourceFile.close();
       nonce = EEPROM.read(5);
       EEPROM.write(5, nonce + 1);
     }
     else if(commandBuffer[4] == 0x73 and commandBuffer[5] == 0x78){ //sx (set extension)
-      setLEDColor(0, 0, 1); //fix LED issue
+      setLEDColor(1, 1); //fix LED issue
       int i = 0;
       while(1){
         if(blockData[i] == 0x00){
@@ -1152,28 +1008,24 @@ void writeDrive(byte response){
         extension[i] = blockData[i];
         i++;
       }
-      Serial.println(F("Changing file extension to "));
+      Serial.print(F(" - Selector: Changing file extension to "));
       Serial.print(extension);
-      Serial.println();
+      Serial.println("...");
       nonce = EEPROM.read(5);
       EEPROM.write(5, nonce + 1);
     }
-    delay(10);
     //cli();
   }
   else if(byteNum < disk.fileSize()){
-    //sei();
     byteNum *= 532;
     disk.seekSet(byteNum);
     disk.write(blockData, 532);
     disk.flush();
-    delay(1);
-    //cli();
+    Serial.println();
   }
   else{
     //sei();
-    Serial.println(F("Error: Requested block is out of range!"));
-    delay(5);
+    Serial.println(F(" - Error: Requested block is out of range!"));
     //cli();
   }
   setParallelDir(1);
@@ -1187,28 +1039,32 @@ for(int i = writeStatusOffset; i < 536; i++){
   blockData[i] = 0x00;
 }
   //pointer = blockData - 4; //make the pointer point toward our blockData array
-  currentTime = 0;
-  continueLoop = true;
-  attachInterrupt(STRBPin, readISR, FALLING);
-  attachInterrupt(CMDPin, exitLoopISR, FALLING);
-  sendData(*pointer++); //and put the first status byte on the bus
+  bufferIndex = 532;
+  if(__builtin_parity(blockData[bufferIndex]) == 0){
+    clearPARITY();
+  }
+  else{
+    setPARITY();
+  }
+  sendData(blockData[bufferIndex++]); //and put the first status byte on the bus
+  noInterrupts();
   clearBSY(); //if everything looks good, raise BSY
-  while(continueLoop);
-  detachInterrupt(STRBPin);
-  detachInterrupt(CMDPin);
-  pointer = 0;
-  /*while(readCMD() == 1){ //do this for the remaining three status bytes
-    currentState = readSTRB();
+
+
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for the remaining three status bytes
+    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, send the next status byte and increment the index
-      sendData(0x00);
-      strobeIndex += 1;
-    }
-    currentTime++;
-    if(currentTime >= timeout){
-      return;
+      if(__builtin_parity(blockData[bufferIndex]) == 0){
+        clearPARITY();
+      }
+      else{
+        setPARITY();
+      }
+      REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset);
+      REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset));
     }
     prevState = currentState;
-  }*/
+  }
   if(halt == true){
     while(1);
   }
@@ -1220,7 +1076,7 @@ void initPins(){
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << RWPin);
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << STRBPin);
   REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PRESPin);
-  REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PARITYPin);
+  REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << PARITYPin);
 
   clearBSY();
   //clearPARITY();
@@ -1282,78 +1138,55 @@ void updateSpareTable(){
   }
 }
 
-
 //all of these functions just make it easier to set, clear, and read the control signals for the drive
 
 void setBSY(){
-  setLEDColor(0, 0, 0);
-  //REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << BSYPin);
+  setLEDColor(0, 0);
   REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << BSYPin);
-  //PORTC = PORTC & B11111101;
 }
 
 void clearBSY(){
-  setLEDColor(0, 1, 0);
-  //REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << BSYPin);
+  setLEDColor(0, 1);
   REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << BSYPin);
-  //PORTC = PORTC | B00000010;
 }
 
 void setPARITY(){
-  //REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << PARITYPin);
   REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << PARITYPin);
-  //PORTC = PORTC & B11011111;
 }
 
 void clearPARITY(){
-  //REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b1 << PARITYPin);
   REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << PARITYPin);
-  //PORTC = PORTC | B00100000;
 }
-/*void setPCHK(){
-  PORTC = PORTC & B10111111;
-}
-
-void clearPCHK(){
-  PORTC = PORTC | B01000000;
-}
-
-void setPOCD(){
-  PORTC = PORTC & B01111111;
-}
-
-void clearPOCD(){
-  PORTC = PORTC | B10000000;
-}*/
 
 bool readCMD(){
-  //REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << CMDPin);
   return bitRead(REG_READ(GPIO_IN_REG), CMDPin);
 }
 
 bool readRW(){
-  //REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << RWPin);
   return bitRead(REG_READ(GPIO_IN_REG), RWPin);
 }
 
 bool readSTRB(){
-  //REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << STRBPin);
   return bitRead(REG_READ(GPIO_IN_REG), STRBPin);
 }
 
 bool readPRES(){
-  //REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PRESPin);
   return bitRead(REG_READ(GPIO_IN_REG), PRESPin);
 }
 
-/*bool readParity(){
-  return bitRead(PINC, 5);
-}*/
-
-void setLEDColor(bool r, bool g, bool b){
-  digitalWrite(red, r);
-  digitalWrite(green, g);
-  //digitalWrite(blue, b);
+void setLEDColor(bool r, bool g){
+  if(r == 1){
+    REG_WRITE(GPIO_OUT1_W1TS_REG, 0b1);
+  }
+  else{
+    REG_WRITE(GPIO_OUT1_W1TC_REG, 0b1);
+  }
+  if(g == 1){
+    REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << green);
+  }
+  else{
+    REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << green);
+  }
 }
 
 
