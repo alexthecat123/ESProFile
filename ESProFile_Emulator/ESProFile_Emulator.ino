@@ -39,25 +39,6 @@ uint8_t blockData[536]; //the array that holds the block that's currently being 
 uint32_t rawBlockData[536];
 uint32_t rawInvBlockData[536];
 
-bool parityArray[256] = {
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
-};
-
 uint8_t spareTable[48] = {0x50, 0x52, 0x4F, 0x46, 0x49, 0x4C, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x03, 0x98, 0x00, 0x26, 0x00, 0x02, 0x14, 0x20, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x43, 0x61, 0x6D, 0x65, 0x6F, 0x2F, 0x41, 0x70, 0x68, 0x69, 0x64, 0x20, 0x30, 0x30, 0x30, 0x31}; //the array that holds the spare table
 
 char fileName[256];
@@ -221,12 +202,7 @@ void loop() {
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
       commandBuffer[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
-      if(__builtin_parity(commandBuffer[bufferIndex++]) == 0){
-        clearPARITY();
-      }
-      else{
-        setPARITY();
-      }
+      sendParity(commandBuffer[bufferIndex++]);
     }
     prevState = currentState;
   }
@@ -667,12 +643,7 @@ void readDrive(){
   }*/
 
   bufferIndex = 0;
-  if(__builtin_parity(blockData[bufferIndex]) == 0){
-    clearPARITY();
-  }
-  else{
-    setPARITY();
-  }
+  sendParity(blockData[bufferIndex]);
   sendData(blockData[bufferIndex++]);
 
   noInterrupts();
@@ -682,12 +653,7 @@ void readDrive(){
   while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for each of the remaining data bytes //bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 1 and prevState == 0){ //if we're on the falling edge of the strobe, put the next data byte on the bus and increment the pointer
-      if(__builtin_parity(blockData[bufferIndex]) == 0){
-        clearPARITY();
-      }
-      else{
-        setPARITY();
-      }
+      sendParity(blockData[bufferIndex]);
       REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset);
       REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset));
       //REG_WRITE(GPIO_OUT_REG, rawBlockData[i++]);
@@ -731,12 +697,7 @@ void writeDrive(byte response){
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //when we detect a falling edge on the strobe line, read the data bus, save it contents into the data array, and increment the pointer
       blockData[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
-      if(__builtin_parity(blockData[bufferIndex++]) == 0){
-        clearPARITY();
-      }
-      else{
-        setPARITY();
-      }
+      sendParity(blockData[bufferIndex++]);
     }
     prevState = currentState;
   }
@@ -1040,12 +1001,7 @@ for(int i = writeStatusOffset; i < 536; i++){
 }
   //pointer = blockData - 4; //make the pointer point toward our blockData array
   bufferIndex = 532;
-  if(__builtin_parity(blockData[bufferIndex]) == 0){
-    clearPARITY();
-  }
-  else{
-    setPARITY();
-  }
+  sendParity(blockData[bufferIndex]);
   sendData(blockData[bufferIndex++]); //and put the first status byte on the bus
   noInterrupts();
   clearBSY(); //if everything looks good, raise BSY
@@ -1054,12 +1010,7 @@ for(int i = writeStatusOffset; i < 536; i++){
   while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ //do this for the remaining three status bytes
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin);
     if(currentState == 0 and prevState == 1){ //if we're on the falling edge of the strobe, send the next status byte and increment the index
-      if(__builtin_parity(blockData[bufferIndex]) == 0){
-        clearPARITY();
-      }
-      else{
-        setPARITY();
-      }
+      sendParity(blockData[bufferIndex]);
       REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset);
       REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset));
     }
@@ -1093,6 +1044,15 @@ byte receiveData(){ //makes it more user-friendly to receive data
   return REG_READ(GPIO_IN_REG) >> busOffset;
   //DDRL = B00000000; //set the bus to input mode
   //return PINL; //and return whatever's on the bus
+}
+
+void sendParity(uint8_t data){
+  if(__builtin_parity(data) == 0){
+    clearPARITY();
+  }
+  else{
+    setPARITY();
+  }
 }
 
 void updateSpareTable(){
