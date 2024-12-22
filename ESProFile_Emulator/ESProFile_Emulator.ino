@@ -91,21 +91,21 @@ void setup(){
   EEPROM.write(5, nonce + 1); // Then write it back, incrementing it by one
   initPins(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println(F("ESProFile Emulator Mode - Version 1.0")); // Print a welcome message
+  Serial.println("ESProFile Emulator Mode - Version 1.0"); // Print a welcome message
   if(!SDCard.begin(SD_CS, SD_SCK_MHZ(10))){ // Initialize the SD card
-    Serial.println(F("SD card initialization failed! Halting...")); // And print an error/go into an infinite loop on failure
+    Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
     while(1);
   }
   rootDir.open("/");
 
   if(!disk.open("profile.image", O_RDWR)){ // Try opening the default disk image file
-    Serial.println(F("Default drive file profile.image not found! Halting...")); // Give another error/infinite loop on failure
+    Serial.println("Default drive file profile.image not found! Halting..."); // Give another error/infinite loop on failure
     while(1);
   }
 
   updateSpareTable(); // If all this succeeds, update the spare table to reflect the attributes of the current disk image
   setLEDColor(0, 1); // Make the LED green to show that the ESProFile is ready
-  Serial.println(F("ESProFile is ready!")); // And print a ready message
+  Serial.println("ESProFile is ready!"); // And print a ready message
 }
 
 void loop() {
@@ -131,7 +131,7 @@ void loop() {
     // The Lisa does this at boot time to see if a ProFile is present
     currentTime++;
     if(currentTime >= timeout){
-      //Serial.println(F("Phase 1: Host didn't respond with a 55! Maybe the drive was reset?"));
+      //Serial.println("Phase 1: Host didn't respond with a 55! Maybe the drive was reset?");
       return;
     }
   }
@@ -213,7 +213,7 @@ void readDrive(){
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      Serial.println(F(" - Read phase 2: Host didn't respond with a 55!"));
+      Serial.println(" - Read phase 2: Host didn't respond with a 55!");
       return;
     }
   }
@@ -230,7 +230,7 @@ void readDrive(){
   }
   // If the block number is 0xFFFEFD, then it's a Selector "get emulator status" command
   else if(commandBuffer[1] == 0xFF and commandBuffer[2] == 0xFE and commandBuffer[3] == 0xFD){
-    Serial.println(F(" - Selector: Sending emulator status..."));
+    Serial.println(" - Selector: Sending emulator status...");
     setLEDColor(1, 1); // Make the LED amber to signify a Selector command
     uptime = esp_timer_get_time() / 1000000; // Get the uptime of the ESProFile in seconds
     char days[5];
@@ -333,9 +333,9 @@ void readDrive(){
         //scratchFile.getModifyDateTime(dateModified, timeModified);
         scratchFile.close();
       }
-      Serial.print(F(" - Selector: Sending file information for file "));
+      Serial.print(" - Selector: Sending file information for file ");
       Serial.print(fileName);
-      Serial.println(F("..."));
+      Serial.println("...");
       for(int i = 6; i < 20; i++){ // Since we don't have modification date and time, just fill these fields with random data
         //Serial.print(dateModified[i - 6]);
         //Serial.print(" ");
@@ -429,19 +429,19 @@ void readDrive(){
     selectorCommandRun = true; // Set the flag indicating that a Selector command has been run
     setLEDColor(1, 1); // Set the LED color to amber to signify that a Selector command has been run
     if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x43){ // If the retry count and spare threshold are 0x53 and 0x43, then the host wants our moniker
-      Serial.println(F(" - Selector: Sending device moniker..."));
+      Serial.println(" - Selector: Sending device moniker...");
       for(int i = 0; i < 532; i++){ // So read the moniker out of the ESP32's EEPROM and put it in our block data
         blockData[i+readStatusOffset] = EEPROM.read(KVMoniker + i);
       }
     }
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x61){ // If the retry/spare are 0x53 and 0x61, then the host wants our autoboot status
-      Serial.println(F(" - Selector: Sending autoboot status..."));
+      Serial.println(" - Selector: Sending autoboot status...");
       for(int i = 0; i < 532; i++){ // So read it out of the EEPROM and put it in the block data
         blockData[i+readStatusOffset] = EEPROM.read(KVAutoboot + i);
       }
     }
     else{ // Any other retry count and spare threshold is for another key-value store location that we haven't implemented
-      Serial.println(F(" - Selector Error: Unsupported key-value load operation!"));
+      Serial.println(" - Selector Error: Unsupported key-value load operation!");
     }
   }
 
@@ -450,7 +450,7 @@ void readDrive(){
     selectorCommandRun = true; // Set the flag to indicate that a Selector command has run
     setLEDColor(1, 1); // And indicate that this is a Selector command by setting the LED amber
     if(commandBuffer[4] == 0xFF and commandBuffer[5] == 0xFF){ // If the retry count and spare threshold are 0xFF, then we want to replace the Selector with a spare from the rescue folder
-      Serial.println(F(" - Selector: Beginning 'Selector Rescue' procedure..."));
+      Serial.println(" - Selector: Beginning 'Selector Rescue' procedure...");
       int replacementIndex = 0;
       char buffer[30];
       sprintf(buffer, "profile-backup-%d.image", replacementIndex); // First we want to backup the corrupted Selector image
@@ -458,21 +458,21 @@ void readDrive(){
         replacementIndex++;
         sprintf(buffer, "profile-backup-%d.image", replacementIndex);
       }
-      Serial.print(F("Backing up current Selector to "));
+      Serial.print("Backing up current Selector to ");
       Serial.print(replacementIndex);
-      Serial.println(F("..."));
+      Serial.println("...");
       disk.close();
       if(!sourceFile.open("profile.image", O_RDWR)){ // Now open profile.image as the source file
-        Serial.println(F("Error opening current profile.image!"));
+        Serial.println("Error opening current profile.image!");
       }
       else if(!sourceFile.rename(buffer)){ // And rename it to the backup name
-        Serial.println(F("Error creating backup of current profile.image!"));
+        Serial.println("Error creating backup of current profile.image!");
       }
       else if(!sourceFile.close() or !sourceFile.open("/rescue/selector.image", O_RDONLY)){ // Then close it and open the backup Selector image
-        Serial.println(F("Error opening backup selector image!"));
+        Serial.println("Error opening backup selector image!");
       }
       else if(!destFile.createContiguous("profile.image", sourceFile.fileSize())){ // Now create a new profile.image file with the same size as the backup Selector image
-        Serial.println(F("Error creating new profile.image!"));
+        Serial.println("Error creating new profile.image!");
       }
       else{
         size_t n;
@@ -481,12 +481,12 @@ void readDrive(){
         }
         nonce = EEPROM.read(5); // Finally, increment the nonce and write it back to EEPROM
         EEPROM.write(5, nonce + 1);
-        Serial.println(F("Done with Selector Rescue procedure!"));
+        Serial.println("Done with Selector Rescue procedure!");
       }
       sourceFile.close(); // Close both the source and destination files
       destFile.close();
       if(!disk.open("profile.image", O_RDWR)){ // And then reopen the new profile.image as our current disk image
-        Serial.println(F("Failed to reopen profile.image!"));
+        Serial.println("Failed to reopen profile.image!");
       }
       updateSpareTable(); // Update the spare table to reflect the attributes of the new disk image
     }
@@ -494,10 +494,10 @@ void readDrive(){
     else if((commandBuffer[4] >> 4) == 0x00){
       blockNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532; // The block that we want to send is formed from the lower nibble of the retry count and the full spare threshold
       if(!sourceFile.open("/rescue/selector.image", O_RDONLY)){ // Open the backup Selector image
-        Serial.println(F(" - Selector: Error opening backup Selector ProFile image!"));
+        Serial.println(" - Selector: Error opening backup Selector ProFile image!");
       }
       else if((blockNum + 531) >= sourceFile.fileSize()){ // And make sure that the block we want to send isn't past the end of the file
-        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
+        Serial.println(" - Selector Error: Block is past the end of the file!");
         for(int i = 0; i < 532; i++){ // If it is, fill the block data buffer with zeros
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -506,10 +506,10 @@ void readDrive(){
       else{
         disk.seekSet(blockNum); // Seek to the block in the disk image
         sourceFile.read(blockData+readStatusOffset, 532); // And read the block into the block data buffer
-        Serial.print(F(" - Selector: Sending block "));
+        Serial.print(" - Selector: Sending block ");
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
-        Serial.println(F(" of backup Selector ProFile image!"));
+        Serial.println(" of backup Selector ProFile image!");
       }
       sourceFile.close();
     }
@@ -518,10 +518,10 @@ void readDrive(){
     else if((commandBuffer[4] >> 4) == 0x01){
       blockNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532;
       if(!sourceFile.open("/rescue/selector.3.5inch.dc42", O_RDONLY)){
-        Serial.println(F(" - Selector: Error opening backup Selector 3.5 image!"));
+        Serial.println(" - Selector: Error opening backup Selector 3.5 image!");
       }
       else if((blockNum + 531) >= sourceFile.fileSize()){
-        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
+        Serial.println(" - Selector Error: Block is past the end of the file!");
         for(int i = 0; i < 532; i++){
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -529,10 +529,10 @@ void readDrive(){
       else{
         disk.seekSet(blockNum);
         sourceFile.read(blockData+readStatusOffset, 532);
-        Serial.print(F(" - Selector: Sending block "));
+        Serial.print(" - Selector: Sending block ");
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
-        Serial.println(F(" of backup Selector 3.5 DC42 image..."));
+        Serial.println(" of backup Selector 3.5 DC42 image...");
       }
       sourceFile.close();
     }
@@ -541,10 +541,10 @@ void readDrive(){
     else if((commandBuffer[4] >> 4) == 0x02){
       blockNum = ((commandBuffer[4] & B00001111) << 8 | commandBuffer[5]) * 532;
       if(!sourceFile.open("/rescue/selector.twiggy.dc42", O_RDONLY)){
-        Serial.println(F(" - Selector: Error opening backup Selector Twiggy image!"));
+        Serial.println(" - Selector: Error opening backup Selector Twiggy image!");
       }
       else if((blockNum + 531) >= sourceFile.fileSize()){
-        Serial.println(F(" - Selector Error: Block is past the end of the file!"));
+        Serial.println(" - Selector Error: Block is past the end of the file!");
         for(int i = 0; i < 532; i++){
           blockData[i+readStatusOffset] = 0x00;
         }
@@ -552,16 +552,16 @@ void readDrive(){
       else{
         disk.seekSet(blockNum);
         sourceFile.read(blockData+readStatusOffset, 532);
-        Serial.print(F(" - Selector: Sending block "));
+        Serial.print(" - Selector: Sending block ");
         printDataNoSpace(commandBuffer[4] & B00001111);
         printDataNoSpace(commandBuffer[5]);
-        Serial.println(F(" of backup Selector Twiggy DC42 image..."));
+        Serial.println(" of backup Selector Twiggy DC42 image...");
       }
       sourceFile.close();
     }
     // If the upper nibble of the retry count is something else, then the command is invalid
     else{
-      Serial.println(F(" - Selector: Bad 'Selector Rescue' command!"));
+      Serial.println(" - Selector: Bad 'Selector Rescue' command!");
       for(int i = 0; i < 532; i++){ // So fill the entire block with zeros
         blockData[i+readStatusOffset] = 0x00;
       }
@@ -576,7 +576,7 @@ void readDrive(){
   }
   // Otherwise, if the block is outside the range of the disk image, fill the block data buffer with zeros
   else{
-    Serial.println(F(" - Error: Requested block is out of range!"));
+    Serial.println(" - Error: Requested block is out of range!");
     for(int i = 0; i < 532; i++){
       blockData[i+readStatusOffset] = 0x00;
     }
@@ -627,7 +627,7 @@ void writeDrive(){
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      Serial.println(F(" - Write phase 2: Host didn't respond with a 55!"));
+      Serial.println(" - Write phase 2: Host didn't respond with a 55!");
       return;
     }
   }
@@ -665,7 +665,7 @@ void writeDrive(){
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
     if(currentTime >= timeout){
-      Serial.println(F(" - Write phase 3: Host didn't respond with a 55!"));
+      Serial.println(" - Write phase 3: Host didn't respond with a 55!");
       return;
     }
   }
@@ -677,13 +677,13 @@ void writeDrive(){
     // If the first four bytes in the received block are "HALT", then the host wants to halt the emulator
     if(blockData[0] == 0x48 and blockData[1] == 0x41 and blockData[2] == 0x4C and blockData[3] == 0x54){
       halt = true; // Set the halt flag
-      Serial.println(F(" - Selector: Halting emulator..."));
+      Serial.println(" - Selector: Halting emulator...");
       setLEDColor(1, 0); // And set the LED red to indicate that the ESProFile is halted
     }
     // If the first six bytes in the received block are "IMAGE:", then the host wants to switch to a different image file
     if(blockData[0] == 0x49 and blockData[1] == 0x4D and blockData[2] == 0x41 and blockData[3] == 0x47 and blockData[4] == 0x45 and blockData[5] == 0x3A){
       setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
-      Serial.print(F(" - Selector: Switching to image file "));
+      Serial.print(" - Selector: Switching to image file ");
       int i = 6;
       while(1){ // Read the desired filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -698,10 +698,10 @@ void writeDrive(){
     }
     disk.close(); // Close the current disk image
     if(!disk.open(fileName, O_RDWR)){ // And try to open the new disk image
-      Serial.print(F(" - Error opening image file!"));
+      Serial.print(" - Error opening image file!");
       disk.close(); // If we can't open the new disk image, close it again
       if(!disk.open("profile.image", O_RDWR)){ // And try to reopen the old one
-        Serial.print(F(" And failed to reopen profile.image!"));
+        Serial.print(" And failed to reopen profile.image!");
       }
       updateSpareTable(); // Update the spare table to reflect the attributes of the new disk image after the failed swap
     }
@@ -722,21 +722,21 @@ void writeDrive(){
     }
     // If the retry count and spare threshold are 0x53 and 0x43, then the host wants to write to the device moniker field
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x43){
-      Serial.println(F(" - Selector: Updating device moniker..."));
+      Serial.println(" - Selector: Updating device moniker...");
       for(int i = 0; i < 532; i++){ // So write the block data into the EEPROM at the moniker location
         EEPROM.write(KVMoniker + i, blockData[i]);
       }
     }
     // If the retry count and spare threshold are 0x53 and 0x61, then the host wants to write to the device autoboot field
     else if(commandBuffer[4] == 0x53 and commandBuffer[5] == 0x61){
-      Serial.println(F(" - Selector: Updating device autoboot status..."));
+      Serial.println(" - Selector: Updating device autoboot status...");
       for(int i = 0; i < 532; i++){ // So write the block data into the EEPROM at the autoboot location
         EEPROM.write(KVAutoboot + i, blockData[i]);
       }
     }
     // Otherwise, it's a write to an unsupported key-value store location
     else{
-      Serial.println(F(" - Selector Error: Unsupported key-value write operation!"));
+      Serial.println(" - Selector Error: Unsupported key-value write operation!");
     }
   }
   // If the block number is 0xFFFEFE, then it's a Selector filesystem command of some kind
@@ -745,7 +745,7 @@ void writeDrive(){
     setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
     // If the retry count and spare threshold are 0x63 and 0x70, then the host wants to copy a file
     if(commandBuffer[4] == 0x63 and commandBuffer[5] == 0x70){
-      Serial.print(F(" - Selector: Copying "));
+      Serial.print(" - Selector: Copying ");
       int i = 0;
       while(1){ // Read the source filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -758,10 +758,10 @@ void writeDrive(){
       }
       i++;
       if(!sourceFile.open(fileName, O_RDONLY)){ // Now try to open the source file
-        Serial.println(F(" (Error opening source file)"));
+        Serial.println(" (Error opening source file)");
       }
       else{
-        Serial.print(F(" to "));
+        Serial.print(" to ");
         int offset = i;
         while(1){ // Now we need to read the destination filename out of the block data
           if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -772,11 +772,11 @@ void writeDrive(){
           Serial.write(fileName[i - offset]);
           i++;
         }
-        Serial.print(F(" with size "));
+        Serial.print(" with size ");
         Serial.print(sourceFile.fileSize());
         Serial.print("; this may take a while...");
         if(!destFile.createContiguous(fileName, sourceFile.fileSize())){ // Create the destination file with the same size as the source file
-          Serial.println(F(" Error creating destination file"));
+          Serial.println(" Error creating destination file");
         }
         else{
           size_t n;
@@ -786,7 +786,7 @@ void writeDrive(){
           }
           nonce = EEPROM.read(5); // And increment the nonce and write it back to EEPROM
           EEPROM.write(5, nonce + 1);
-          Serial.println(F(" Success!"));
+          Serial.println(" Success!");
         }
       }
       sourceFile.close(); // Then close both the source and destination files
@@ -795,7 +795,7 @@ void writeDrive(){
     // If the retry count and spare threshold are 0x6D and 0x6B, then the host wants to create a new "normal" image of size 5MB
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x6B){
       setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
-      Serial.print(F(" - Selector: Creating new 5MB image called "));
+      Serial.print(" - Selector: Creating new 5MB image called ");
       int i = 0;
       while(1){ // Read the filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -807,7 +807,7 @@ void writeDrive(){
       }
       Serial.print("...");
       if(!destFile.createContiguous(fileName, 5175296)){ // Create the new empty image with the appropriate size
-        Serial.print(F(" Error creating destination file!"));
+        Serial.print(" Error creating destination file!");
       }
       Serial.println();
       nonce = EEPROM.read(5); // And increment the nonce and write it back to EEPROM
@@ -817,7 +817,7 @@ void writeDrive(){
     // If the retry count is 0x6D and the spare threshold is 0x78, then the host wants to create a new "extended" image of a user-specified size
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x78){
       setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
-      Serial.print(F(" - Selector: Creating new image of size "));
+      Serial.print(" - Selector: Creating new image of size ");
       int i = 0;
       while(1){ // Read the size out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -831,7 +831,7 @@ void writeDrive(){
       Serial.print(size);
       i++;
       int offset = i;
-      Serial.print(F(" called "));
+      Serial.print(" called ");
       while(1){ // Now read the filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
           fileName[i - offset] = 0x00;
@@ -843,7 +843,7 @@ void writeDrive(){
       }
       Serial.print("...");
       if(!destFile.createContiguous(fileName, size)){ // Create the new empty image with the appropriate size
-        Serial.print(F(" Error creating destination file!"));
+        Serial.print(" Error creating destination file!");
       }
       Serial.println();
       nonce = EEPROM.read(5); // And increment the nonce and write it back to EEPROM
@@ -854,7 +854,7 @@ void writeDrive(){
     else if(commandBuffer[4] == 0x72 and commandBuffer[5] == 0x6D){
       setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
       int i = 0;
-      Serial.print(F(" - Selector: Deleting file "));
+      Serial.print(" - Selector: Deleting file ");
       while(1){ // Read the filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
           fileName[i] = 0x00;
@@ -866,7 +866,7 @@ void writeDrive(){
       }
       Serial.print("...");
       if(!rootDir.remove(fileName)){ // Try to delete the file
-        Serial.print(F(" Failed to delete file!"));
+        Serial.print(" Failed to delete file!");
       }
       Serial.println();
       nonce = EEPROM.read(5); // Then increment the nonce and write it back to EEPROM
@@ -875,7 +875,7 @@ void writeDrive(){
     // If the retry count is 0x6D and the spare threshold is 0x76, then the host wants to move AKA rename a file
     else if(commandBuffer[4] == 0x6D and commandBuffer[5] == 0x76){
       setLEDColor(1, 1); // Set the LED to amber to indicate that we're running a Selector command
-      Serial.print(F(" - Selector: Renaming "));
+      Serial.print(" - Selector: Renaming ");
       int i = 0;
       while(1){ // Read the source filename out of the block data
         if(blockData[i] == 0x00){ // Break once we hit a null terminator
@@ -889,7 +889,7 @@ void writeDrive(){
       i++;
       if(!sourceFile.open(fileName, O_RDWR)){ // Try to open the source file
         Serial.println();
-        Serial.println(F(" (Error opening source file)"));
+        Serial.println(" (Error opening source file)");
       }
       else{
         Serial.print(" to ");
@@ -905,7 +905,7 @@ void writeDrive(){
         }
         Serial.print("...");
         if(!sourceFile.rename(fileName)){ // Try to rename the source file to the destination filename
-          Serial.print(F(" Error renaming file!"));
+          Serial.print(" Error renaming file!");
         }
         Serial.println();
       }
@@ -925,7 +925,7 @@ void writeDrive(){
         extension[i] = blockData[i]; // Put each character into the extension buffer, for use by other parts of the emulator
         i++;
       }
-      Serial.print(F(" - Selector: Changing file extension to "));
+      Serial.print(" - Selector: Changing file extension to ");
       Serial.print(extension);
       Serial.println("...");
       nonce = EEPROM.read(5); // Then increment the nonce and write it back to EEPROM
@@ -942,7 +942,7 @@ void writeDrive(){
   }
   // If the block is outside the range of the disk image, print an error message
   else{
-    Serial.println(F(" - Error: Requested block is out of range!"));
+    Serial.println(" - Error: Requested block is out of range!");
   }
   setParallelDir(1); // Now set the bus to output mode
   delayMicroseconds(1);
@@ -976,9 +976,9 @@ void writeDrive(){
 // Clears the screen by sending the ANSI escape codes for clearing the screen and moving the cursor to the top left
 void clearScreen(){
   Serial.write(27);
-  Serial.print(F("[2J"));
+  Serial.print("[2J");
   Serial.write(27);
-  Serial.print(F("[H"));
+  Serial.print("[H");
 }
 
 // Sets the direction of the parallel bus
@@ -1044,7 +1044,7 @@ void updateSpareTable(){
     spareTable[18] = 0x00; // Drive size
     spareTable[19] = 0x26; // Drive size
     spareTable[20] = 0x00; // Drive size
-    Serial.println(F("Switching to the 5MB ProFile spare table."));
+    Serial.println("Switching to the 5MB ProFile spare table.");
   }
   // If the image is 10MB, then just use the ready-made 10MB ProFile spare table
   else if(disk.fileSize() == 10350592){
@@ -1057,7 +1057,7 @@ void updateSpareTable(){
     spareTable[18] = 0x00; // Drive size
     spareTable[19] = 0x4C; // Drive size
     spareTable[20] = 0x00; // Drive size
-    Serial.println(F("Switching to the 10MB ProFile spare table."));
+    Serial.println("Switching to the 10MB ProFile spare table.");
   }
   // Otherwise, it's a non-standard size, so we must insert the size manually
   else{
@@ -1070,11 +1070,11 @@ void updateSpareTable(){
     spareTable[18] = (disk.fileSize()/532) >> 16; // Drive size
     spareTable[19] = (disk.fileSize()/532) >> 8; // Drive size
     spareTable[20] = (disk.fileSize()/532); // Drive size
-    Serial.print(F("Switching to a custom spare table for drive of size "));
+    Serial.print("Switching to a custom spare table for drive of size ");
     printDataNoSpace(spareTable[18]); // Print the size too
     printDataNoSpace(spareTable[19]);
     printDataNoSpace(spareTable[20]);
-    Serial.println(F(" blocks."));
+    Serial.println(" blocks.");
   }
 }
 
