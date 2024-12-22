@@ -25,7 +25,7 @@
 #define PRESPin 26
 #define PARITYPin 27
 
-// Watchdog timer write enable register and value
+// Watchdog timer write enable register and value 
 #define TIMG1_WDT_WE 0x050D83AA1
 #define TIMG1_WDT_WE_REG 0x3FF60064
 

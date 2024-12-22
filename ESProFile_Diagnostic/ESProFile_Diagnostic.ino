@@ -109,12 +109,10 @@ byte fence[] = {0xF0, 0x78, 0x3C, 0x1E};
 void setup(){
   pinMode(red, OUTPUT);
   pinMode(green, OUTPUT);
-  //pinMode(blue, OUTPUT);
   Serial.begin(115200);
   Serial.setTimeout(10);
   setPinModes();
   setParallelDir(0);
-  //DDRC = B00011101; NOTE: ESP32 version of this has been moved into initPins().
   initPins();
   mainMenu();
 }
