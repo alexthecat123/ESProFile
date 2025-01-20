@@ -4,6 +4,11 @@
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
 
+/* Desirable Features
+Allow the tester to also back an image up to the SD card; you get to type a fileame, it checks if it exists, and then goes to work. It also prints a directory for you before prompting you to give a name
+For restoring, it gives you a numbered file list, and you just select the desired number to restore, then it checks that it's the right size and warns you (but still lets you proceed) if not
+*/
+
 byte packetNum = 0x01;
 bool testMenu = false;
 bool confirmOperation = false;
@@ -58,8 +63,8 @@ byte inputData;
 char x;
 
 
-const char *statusMessages[3][8] = {{"Operation Unsuccessful", "Unrecoverable Servo Error (Widget Only)", "Timeout Error", "CRC Error", "Seek Error - Cannot Read Header", "Resend Data", "More Than 532 Bytes Sent", "Host Acknowledge Was Not 0x55"},
-                          {"Controller Aborted Last Operation (Widget Only)", "Seek Error - Wrong Track", "Sparing Occured", "Cannot Read Spare Table", "Bad Block Table Full", "Five or Fewer Spare Blocks Available (Widget Only)", "Spare Table Full", "Seek Error - Cannot Read Error"},
+const char *statusMessages[3][8] = {{"Operation Unsuccessful", "Unrecoverable Servo Error (Widget Only; Ignore For ProFile)", "Timeout Error", "CRC Error", "Seek Error - Cannot Read Header", "Resend Data", "More Than 532 Bytes Sent", "Host Acknowledge Was Not 0x55"},
+                          {"Controller Aborted Last Operation (Widget Only; Ignore For ProFile)", "Seek Error - Wrong Track", "Sparing Occured", "Cannot Read Spare Table", "Bad Block Table Full", "Five or Fewer Spare Blocks Available (Widget Only; Ignore For ProFile)", "Spare Table Full", "Seek Error - Cannot Read Error"},
                           {"Parity Error", "Drive Gave Bad Response", "Drive Was Reset", "This bit is unused", "This bit is unused", "Block ID Mismatch", "Invalid Block Number", "Drive Has Been Reset"}};
 
 const char *widgetStatusMessages[3][8] = {{"Operation Failed", "Unrecoverable Servo Error", "No Matching Header Found", "Read Error", "This bit is unused", "This bit is unused", "Write Buffer Overflow", "Host Acknowledge Was Not 0x55"},
@@ -179,12 +184,12 @@ bool profileRead(byte address0, byte address1, byte address2, byte retryCount=de
   readStatusBytes();
   readData();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if(commandResponse != 0x02 and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -202,12 +207,12 @@ bool profileWrite(byte address0, byte address1, byte address2, byte retryCount=d
   writeData(532);
   readStatusBytes();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if(commandResponse != 0x03 and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -229,12 +234,12 @@ bool customProfileRead(byte commandByte, byte address0, byte address1, byte addr
   readStatusBytes();
   readData();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if(commandResponse != desiredCommandResponse and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -253,12 +258,12 @@ bool customProfileWrite(byte commandByte, byte address0, byte address1, byte add
   writeData(writeBytes);
   readStatusBytes();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if(commandResponse != desiredCommandResponse and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -275,12 +280,12 @@ bool profileWriteVerify(byte address0, byte address1, byte address2, byte retryC
   writeData(532);
   readStatusBytes();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if(commandResponse != 0x04 and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -304,12 +309,12 @@ bool tenMegDiagRead(bool actuallyReadData=true, bool commandTimeout=true){
   }
   clearCMD();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if((commandResponse != commandBufferTenMegDiag[1] + 2) and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -331,12 +336,12 @@ bool tenMegDiagWrite(bool commandTimeout=true){
   }
   readStatusBytes();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if((commandResponse != commandBufferTenMegDiag[1] + 2) and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -373,7 +378,7 @@ byte sendTenMegDiagCommandBytes(){ //Returns the response byte from the profile 
       break;
     }
     if(millis() - timeoutStart >= 5000){
-      //Serial.println(F("Command Confirmation Failed!!!")); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
+      //Serial.println("Command Confirmation Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
       success = 0xFF;
       break;
     }
@@ -427,12 +432,12 @@ bool widgetRead(bool actuallyReadData=true, bool commandTimeout=true){
   }
   clearCMD();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if((commandResponse != commandBufferWidget[1] + 2) and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -454,12 +459,12 @@ bool widgetWrite(bool commandTimeout=true){
   }
   readStatusBytes();
   if(handshakeSuccessful == 0){
-    Serial.println(F("Handshake failed!"));
+    Serial.println("Handshake failed!");
     setLEDColor(1, 0);
     return false;
   }
   if((commandResponse != commandBufferWidget[1] + 2) and commandResponseMatters){
-    Serial.println(F("Command confirmation failed!"));
+    Serial.println("Command confirmation failed!");
     setLEDColor(1, 0);
     return false;
   }
@@ -496,7 +501,7 @@ byte sendWidgetCommandBytes(){ //Returns the response byte from the profile or 0
       break;
     }
     if(millis() - timeoutStart >= 5000){
-      //Serial.println(F("Command Confirmation Failed!!!")); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
+      //Serial.println("Command Confirmation Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
       success = 0xFF;
       break;
     }
@@ -534,183 +539,183 @@ bool widgetServoMenu = false;
 void mainMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("1 - Reset Drive"));
-  Serial.println(F("2 - Get Drive Info"));
-  Serial.println(F("3 - Read Block Into Data Buffer"));
-  Serial.println(F("4 - Modify Data Buffer"));
-  Serial.println(F("5 - Fill Buffer With Pattern"));
-  Serial.println(F("6 - Write Buffer to Block"));
-  Serial.println(F("7 - Write-Verify Buffer to Block"));
-  Serial.println(F("8 - Write Buffer to Entire Drive"));
-  Serial.println(F("9 - Write Zeros to Drive"));
-  Serial.println(F("A - Compare Every Block With Buffer"));
-  Serial.println(F("B - Search Entire Drive For String"));
-  Serial.println(F("C - Backup Entire Drive"));
-  Serial.println(F("D - Restore Drive From Backup"));
-  Serial.println(F("E - Show Command, Status, and Data Buffers"));
-  Serial.println(F("F - Send Custom Command"));
-  Serial.println(F("G - Drive Tests"));
-  Serial.println(F("H - 5MB ProFile Diagnostic Z8 Commands"));
-  Serial.println(F("I - 10MB ProFile Diagnostic Z8 Commands"));
-  Serial.println(F("J - Widget-Specific Commands"));
+  Serial.println("1 - Reset Drive");
+  Serial.println("2 - Get Drive Info");
+  Serial.println("3 - Read Block Into Data Buffer");
+  Serial.println("4 - Modify Data Buffer");
+  Serial.println("5 - Fill Buffer With Pattern");
+  Serial.println("6 - Write Buffer to Block");
+  Serial.println("7 - Write-Verify Buffer to Block");
+  Serial.println("8 - Write Buffer to Entire Drive");
+  Serial.println("9 - Write Zeros to Drive");
+  Serial.println("A - Compare Every Block With Buffer");
+  Serial.println("B - Search Entire Drive For String");
+  Serial.println("C - Backup Entire Drive");
+  Serial.println("D - Restore Drive From Backup");
+  Serial.println("E - Show Command, Status, and Data Buffers");
+  Serial.println("F - Send Custom Command");
+  Serial.println("G - Drive Tests...");
+  Serial.println("H - 5MB ProFile Diagnostic Z8 Commands...");
+  Serial.println("I - 10MB ProFile Diagnostic Z8 Commands...");
+  Serial.println("J - Widget-Specific Commands...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 void testSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("Drive Tests"));
-  Serial.println(F("1 - Sequential Read"));
-  Serial.println(F("2 - Sequential Write"));
-  Serial.println(F("3 - Repeatedly Read Block"));
-  Serial.println(F("4 - Repeatedly Write Block"));
-  Serial.println(F("5 - Random Read"));
-  Serial.println(F("6 - Random Write"));
-  Serial.println(F("7 - Butterfly Read"));
-  Serial.println(F("8 - Butterfly Write"));
-  Serial.println(F("9 - Read-Write-Read"));
-  Serial.println(F("A - Return to Main Menu"));
+  Serial.println("Drive Tests");
+  Serial.println("1 - Sequential Read");
+  Serial.println("2 - Sequential Write");
+  Serial.println("3 - Repeatedly Read Block");
+  Serial.println("4 - Repeatedly Write Block");
+  Serial.println("5 - Random Read");
+  Serial.println("6 - Random Write");
+  Serial.println("7 - Butterfly Read");
+  Serial.println("8 - Butterfly Write");
+  Serial.println("9 - Read-Write-Read");
+  Serial.println("A - Return to Main Menu...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 void Z8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("5MB ProFile Diagnostic Z8 Commands"));
-  Serial.println(F("1 - Read CHS Into Data Buffer"));
-  Serial.println(F("2 - Write Buffer to CHS"));
-  Serial.println(F("3 - Repeatedly Read CHS"));
-  Serial.println(F("4 - Repeatedly Write CHS"));
-  Serial.println(F("5 - Write-Verify Buffer to CHS"));
-  Serial.println(F("6 - Low-Level Format"));
-  Serial.println(F("7 - Read Drive RAM Into Buffer"));
-  Serial.println(F("8 - Write Buffer Contents to Drive RAM"));
-  Serial.println(F("9 - Format"));
-  Serial.println(F("A - Scan"));
-  Serial.println(F("B - Init Spare Table"));
-  Serial.println(F("C - Disable Head Stepper"));
-  Serial.println(F("D - Modify Data Buffer"));
-  Serial.println(F("E - Fill Buffer With Pattern"));
-  Serial.println(F("F - Show Command, Status, and Data Buffers"));
-  Serial.println(F("G - Return to Main Menu"));
+  Serial.println("5MB ProFile Diagnostic Z8 Commands");
+  Serial.println("1 - Read CHS Into Data Buffer");
+  Serial.println("2 - Write Buffer to CHS");
+  Serial.println("3 - Repeatedly Read CHS");
+  Serial.println("4 - Repeatedly Write CHS");
+  Serial.println("5 - Write-Verify Buffer to CHS");
+  Serial.println("6 - Low-Level Format");
+  Serial.println("7 - Read Drive RAM Into Buffer");
+  Serial.println("8 - Write Buffer Contents to Drive RAM");
+  Serial.println("9 - Format");
+  Serial.println("A - Scan");
+  Serial.println("B - Init Spare Table");
+  Serial.println("C - Disable Head Stepper");
+  Serial.println("D - Modify Data Buffer");
+  Serial.println("E - Fill Buffer With Pattern");
+  Serial.println("F - Show Command, Status, and Data Buffers");
+  Serial.println("G - Return to Main Menu...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 void tenMegZ8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("10MB ProFile Diagnostic Z8 Commands"));
-  Serial.println(F("1 - Read CHS Into Data Buffer"));
-  Serial.println(F("2 - Write Buffer to CHS"));
-  Serial.println(F("3 - Repeatedly Read CHS"));
-  Serial.println(F("4 - Repeatedly Write CHS"));
-  Serial.println(F("5 - Seek Heads"));
-  Serial.println(F("6 - Low-Level Format"));
-  Serial.println(F("7 - Format Track(s)"));
-  Serial.println(F("8 - Scan"));
-  Serial.println(F("9 - Init Spare Table"));
-  Serial.println(F("A - Test ProFile RAM"));
-  Serial.println(F("B - Read Header"));
-  Serial.println(F("C - Erase Track(s)"));
-  Serial.println(F("D - Get Result Table"));
-  Serial.println(F("E - Disable Head Stepper"));
-  Serial.println(F("F - Park Heads (Do This Before Exiting!)"));
-  Serial.println(F("G - Send Custom 10MB Diagnostic Command"));
-  Serial.println(F("H - Modify Data Buffer"));
-  Serial.println(F("I - Fill Buffer With Pattern"));
-  Serial.println(F("J - Show Command, Status, and Data Buffers"));
-  Serial.println(F("K - Return to Main Menu"));
+  Serial.println("10MB ProFile Diagnostic Z8 Commands");
+  Serial.println("1 - Read CHS Into Data Buffer");
+  Serial.println("2 - Write Buffer to CHS");
+  Serial.println("3 - Repeatedly Read CHS");
+  Serial.println("4 - Repeatedly Write CHS");
+  Serial.println("5 - Seek Heads");
+  Serial.println("6 - Low-Level Format");
+  Serial.println("7 - Format Track(s)");
+  Serial.println("8 - Scan");
+  Serial.println("9 - Init Spare Table");
+  Serial.println("A - Test ProFile RAM");
+  Serial.println("B - Read Header");
+  Serial.println("C - Erase Track(s)");
+  Serial.println("D - Get Result Table");
+  Serial.println("E - Disable Head Stepper");
+  Serial.println("F - Park Heads (Do This Before Exiting!)");
+  Serial.println("G - Send Custom 10MB Diagnostic Command");
+  Serial.println("H - Modify Data Buffer");
+  Serial.println("I - Fill Buffer With Pattern");
+  Serial.println("J - Show Command, Status, and Data Buffers");
+  Serial.println("K - Return to Main Menu...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 void widgetSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("Widget-Specific Commands"));
-  Serial.println(F("1 - Soft Reset"));
-  Serial.println(F("2 - Reset Servo"));
-  Serial.println(F("3 - Get Drive ID"));
-  Serial.println(F("4 - Read Spare Table"));
-  Serial.println(F("5 - Get Controller Status"));
-  Serial.println(F("6 - Get Servo Status"));
-  Serial.println(F("7 - Get Abort Status"));
-  Serial.println(F("8 - Diagnostic Read"));
-  Serial.println(F("9 - Diagnostic Write"));
-  Serial.println(F("A - Read Header"));
-  Serial.println(F("B - Write Buffer to Spare Table"));
-  Serial.println(F("C - Seek"));
-  Serial.println(F("D - Send Servo Command"));
-  Serial.println(F("E - Send Restore"));
-  Serial.println(F("F - Set Recovery"));
-  Serial.println(F("G - Set Auto-Offset"));
-  Serial.println(F("H - View Track Offsets"));
-  Serial.println(F("I - Low-Level Format"));
-  Serial.println(F("J - Format Track(s)"));
-  Serial.println(F("K - Init Spare Table"));
-  Serial.println(F("L - Scan"));
-  Serial.println(F("M - Park Heads (Do This Before Exiting!)"));
-  Serial.println(F("N - Send Custom Widget Command"));
-  Serial.println(F("O - Modify Data Buffer"));
-  Serial.println(F("P - Fill Buffer With Pattern"));
-  Serial.println(F("Q - Show Command, Status, and Data Buffers"));
-  Serial.println(F("R - Return to Main Menu"));
+  Serial.println("Widget-Specific Commands");
+  Serial.println("1 - Soft Reset");
+  Serial.println("2 - Reset Servo");
+  Serial.println("3 - Get Drive ID");
+  Serial.println("4 - Read Spare Table");
+  Serial.println("5 - Get Controller Status");
+  Serial.println("6 - Get Servo Status");
+  Serial.println("7 - Get Abort Status");
+  Serial.println("8 - Diagnostic Read");
+  Serial.println("9 - Diagnostic Write");
+  Serial.println("A - Read Header");
+  Serial.println("B - Write Buffer to Spare Table");
+  Serial.println("C - Seek");
+  Serial.println("D - Send Servo Command...");
+  Serial.println("E - Send Restore");
+  Serial.println("F - Set Recovery");
+  Serial.println("G - Set Auto-Offset");
+  Serial.println("H - View Track Offsets");
+  Serial.println("I - Low-Level Format");
+  Serial.println("J - Format Track(s)");
+  Serial.println("K - Init Spare Table");
+  Serial.println("L - Scan");
+  Serial.println("M - Park Heads (Do This Before Exiting!)");
+  Serial.println("N - Send Custom Widget Command");
+  Serial.println("O - Modify Data Buffer");
+  Serial.println("P - Fill Buffer With Pattern");
+  Serial.println("Q - Show Command, Status, and Data Buffers");
+  Serial.println("R - Return to Main Menu...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 void servoSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println(F("ESProFile Diagnostic Mode - Version 1.0"));
-  Serial.println(F("By: Alex Anderson-McLeod"));
-  Serial.println(F("If you find any bugs, please email me at alexelectronicsguy@gmail.com!"));
+  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("By: Alex Anderson-McLeod");
+  Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
-  Serial.println(F("Widget Servo Commands"));
-  Serial.println(F("1 - Soft Reset"));
-  Serial.println(F("2 - Reset Servo"));
-  Serial.println(F("3 - Get Controller Status"));
-  Serial.println(F("4 - Get Servo Status"));
-  Serial.println(F("5 - Get Abort Status"));
-  Serial.println(F("6 - Read Header"));
-  Serial.println(F("7 - Recal"));
-  Serial.println(F("8 - Access"));
-  Serial.println(F("9 - Access With Offset"));
-  Serial.println(F("A - Offset"));
-  Serial.println(F("B - Home (Issue a soft reset after this to get the drive working again!)"));
-  Serial.println(F("C - Show Command, Status, and Data Buffers"));
-  Serial.println(F("D - Return to Widget Menu"));
+  Serial.println("Widget Servo Commands");
+  Serial.println("1 - Soft Reset");
+  Serial.println("2 - Reset Servo");
+  Serial.println("3 - Get Controller Status");
+  Serial.println("4 - Get Servo Status");
+  Serial.println("5 - Get Abort Status");
+  Serial.println("6 - Read Header");
+  Serial.println("7 - Recal");
+  Serial.println("8 - Access");
+  Serial.println("9 - Access With Offset");
+  Serial.println("A - Offset");
+  Serial.println("B - Home (Issue a soft reset after this to get the drive working again!)");
+  Serial.println("C - Show Command, Status, and Data Buffers");
+  Serial.println("D - Return to Widget Menu...");
   Serial.println();
-  Serial.println(F("Note: All numbers are in hex unless otherwise specified."));
-  Serial.print(F("Please select an option: "));
+  Serial.println("Note: All numbers are in hex unless otherwise specified.");
+  Serial.print("Please select an option: ");
 }
 
 int readDelay = 1;
@@ -724,14 +729,14 @@ void flushInput(){
 
 void printStatus(){
   bool statusGood = 1;
-  Serial.print(F("Drive Status: "));
+  Serial.print("Drive Status: ");
   for(int i = 0; i < 4; i++){
     printRawBinary(driveStatus[i]);
     Serial.print(" ");
   }
   Serial.println();
   Serial.println();
-  Serial.println(F("Status Interpretation:"));
+  Serial.println("Status Interpretation:");
   for(int i = 0; i < 3; i++){
     for(int j = 0; j < 8; j++){
       if(bitRead(driveStatus[i], j) == 1){
@@ -741,10 +746,10 @@ void printStatus(){
     }
   }
   if(statusGood == 1){
-    Serial.println(F("Status looks good!"));
+    Serial.println("Status looks good!");
   }
   if((driveStatus[3] | B00000000) != B00000000){
-    Serial.print(F("Number of Retries: "));
+    Serial.print("Number of Retries: ");
     Serial.print(driveStatus[3]>>4, HEX);
     Serial.print(driveStatus[3]&0x0F, HEX);
     Serial.println();
@@ -754,14 +759,14 @@ void printStatus(){
 
 void printWidgetStatus(){
   bool statusGood = 1;
-  Serial.print(F("Drive Status: "));
+  Serial.print("Drive Status: ");
   for(int i = 0; i < 4; i++){
     printRawBinary(driveStatus[i]);
     Serial.print(" ");
   }
   Serial.println();
   Serial.println();
-  Serial.println(F("Status Interpretation:"));
+  Serial.println("Status Interpretation:");
   for(int i = 0; i < 3; i++){
     for(int j = 0; j < 8; j++){
       if(bitRead(driveStatus[i], j) == 1){
@@ -783,10 +788,10 @@ void printWidgetStatus(){
     Serial.println("Read Error Detected By ECC Circuitry");
   }
   if(statusGood == 1){
-    Serial.println(F("Status looks good!"));
+    Serial.println("Status looks good!");
   }
   if((driveStatus[3] & 0x0F) != 0){
-    Serial.print(F("Number of Retries: "));
+    Serial.print("Number of Retries: ");
     printDataNoSpace(driveStatus[3] & 0x0F);
     Serial.println();
   }
@@ -802,9 +807,9 @@ void diagLoop() {
       if(command.equals("1") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false and widgetServoMenu == false){
         setLEDColor(0, 0);
         clearScreen();
-        Serial.println(F("Resetting drive..."));
+        Serial.println("Resetting drive...");
         resetDrive();
-        Serial.print(F("Reset successful! Press return to continue..."));
+        Serial.print("Reset command sent! Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -812,12 +817,12 @@ void diagLoop() {
       }
       else if(command.equals("2") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false and widgetServoMenu == false){
         clearScreen();
-        Serial.println(F("Reading drive info..."));
-        Serial.println(F("Command: 00 FF FF FF 0A 03"));
+        Serial.println("Reading drive info...");
+        Serial.println("Command: 00 FF FF FF 0A 03");
         bool readSuccess = profileRead(0xFF, 0xFF, 0xFF);
         if(readSuccess == 0){
           Serial.println();
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
         }
         /*for(int i = 0; i < 532; i++){
           if(checkParity(blockDataBuffer[i], parity[i]) == false){
@@ -832,78 +837,78 @@ void diagLoop() {
         //printRawParity();
         //Serial.println();
         printStatus();
-        Serial.println(F("Data Analysis:"));
-        Serial.print(F("Device Name: "));
+        Serial.println("Data Analysis:");
+        Serial.print("Device Name: ");
         for(int i = 0; i < 13; i++){
           Serial.write(blockDataBuffer[i]);
         }
         Serial.println();
-        Serial.print(F("Device Number: "));
+        Serial.print("Device Number: ");
         for(int i = 13; i < 16; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         bool widgetInterpretation = false;
         if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x00){
-          Serial.println(F(" (5MB ProFile)"));
+          Serial.println(" (5MB ProFile)");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x10){
-          Serial.println(F(" (10MB ProFile)"));
+          Serial.println(" (10MB ProFile)");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x00){
-          Serial.println(F(" (10MB Widget)"));
+          Serial.println(" (10MB Widget)");
           widgetInterpretation = true;
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x10){
-          Serial.println(F(" (20MB Widget)"));
+          Serial.println(" (20MB Widget)");
           widgetInterpretation = true;
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x20){
-          Serial.println(F(" (40MB Widget)"));
+          Serial.println(" (40MB Widget)");
           widgetInterpretation = true;
         }
         else{
-          Serial.println(F(" (Unknown Drive Type)"));
+          Serial.println(" (Unknown Drive Type)");
         }
-        Serial.print(F("Firmware Revision: "));
+        Serial.print("Firmware Revision: ");
         Serial.print(blockDataBuffer[16], HEX);
-        Serial.print(F("."));
+        Serial.print(".");
         Serial.print(blockDataBuffer[17]>>4, HEX);
         Serial.println(blockDataBuffer[17]&0x0F, HEX);
-        Serial.print(F("Total Blocks: "));
+        Serial.print("Total Blocks: ");
         for(int i = 18; i < 21; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         Serial.println();
-        Serial.print(F("Bytes Per Block: "));
+        Serial.print("Bytes Per Block: ");
         for(int i = 21; i < 23; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         if(widgetInterpretation == true){
           Serial.println();
-          Serial.print(F("Number of Cylinders: "));
+          Serial.print("Number of Cylinders: ");
           printDataNoSpace(blockDataBuffer[23]);
           printDataNoSpace(blockDataBuffer[24]);
           Serial.println();
-          Serial.print(F("Number of Heads: "));
+          Serial.print("Number of Heads: ");
           printDataNoSpace(blockDataBuffer[25]);
           Serial.println();
-          Serial.print(F("Sectors Per Track: "));
+          Serial.print("Sectors Per Track: ");
           printDataNoSpace(blockDataBuffer[26]);
           Serial.println();
-          Serial.print(F("Total Spares: "));
+          Serial.print("Total Spares: ");
           printDataNoSpace(blockDataBuffer[27]);
           printDataNoSpace(blockDataBuffer[28]);
           printDataNoSpace(blockDataBuffer[29]);
           Serial.println();
-          Serial.print(F("Spares Allocated: "));
+          Serial.print("Spares Allocated: ");
           printDataNoSpace(blockDataBuffer[30]);
           printDataNoSpace(blockDataBuffer[31]);
           printDataNoSpace(blockDataBuffer[32]);
           Serial.println();
-          Serial.print(F("Bad Blocks: "));
+          Serial.print("Bad Blocks: ");
           printDataNoSpace(blockDataBuffer[33]);
           printDataNoSpace(blockDataBuffer[34]);
           printDataNoSpace(blockDataBuffer[35]);
@@ -912,21 +917,21 @@ void diagLoop() {
         }
         else{
           Serial.println();
-          Serial.print(F("Total Spares: "));
+          Serial.print("Total Spares: ");
           Serial.print(blockDataBuffer[23]>>4, HEX);
           Serial.print(blockDataBuffer[23]&0x0F, HEX);
           Serial.println();
-          Serial.print(F("Spares Allocated: "));
+          Serial.print("Spares Allocated: ");
           Serial.print(blockDataBuffer[24]>>4, HEX);
           Serial.print(blockDataBuffer[24]&0x0F, HEX);
           Serial.println();
-          Serial.print(F("Bad Blocks: "));
+          Serial.print("Bad Blocks: ");
           Serial.print(blockDataBuffer[25]>>4, HEX);
           Serial.print(blockDataBuffer[25]&0x0F, HEX);
           Serial.println();
           int spareBlockIndex = 0;
           if(blockDataBuffer[24] != 0){
-            Serial.print(F("List of Spared Blocks: "));
+            Serial.print("List of Spared Blocks: ");
           }
           bool firstTime = true;
           while((spareBlockIndex < blockDataBuffer[24]) and ((blockDataBuffer[26 + spareBlockIndex*3] != 0xFF) or (blockDataBuffer[27 + spareBlockIndex*3] != 0xFF) or (blockDataBuffer[28 + spareBlockIndex*3] != 0xFF))){
@@ -934,7 +939,7 @@ void diagLoop() {
               firstTime = false;
             }
             else{
-              Serial.print(F(", "));
+              Serial.print(", ");
             }
             printDataNoSpace(blockDataBuffer[26 + spareBlockIndex*3]);
             printDataNoSpace(blockDataBuffer[27 + spareBlockIndex*3]);
@@ -948,14 +953,14 @@ void diagLoop() {
           int badBlockIndex = 0;
           spareBlockIndex += 1;
           if(blockDataBuffer[25] != 0){
-            Serial.print(F("List of Bad Blocks: "));
+            Serial.print("List of Bad Blocks: ");
           }
           while((badBlockIndex < blockDataBuffer[25]) and ((blockDataBuffer[26 + badBlockIndex*3 + spareBlockIndex*3] != 0xFF) or (blockDataBuffer[27 + badBlockIndex*3 + spareBlockIndex*3] != 0xFF) or (blockDataBuffer[28 + badBlockIndex*3 + spareBlockIndex*3] != 0xFF))){
             if(firstTime == true){
               firstTime = false;
             }
             else{
-              Serial.print(F(", "));
+              Serial.print(", ");
             }
             printDataNoSpace(blockDataBuffer[26 + badBlockIndex*3 + spareBlockIndex*3]);
             printDataNoSpace(blockDataBuffer[27 + badBlockIndex*3 + spareBlockIndex*3]);
@@ -968,7 +973,7 @@ void diagLoop() {
           Serial.println();
         }
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -976,13 +981,13 @@ void diagLoop() {
       else if(command.equals("3") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false and widgetServoMenu == false){
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the block number that you want to read: "));
+        Serial.print("Please enter the block number that you want to read: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the block number that you want to read: "));
+            Serial.print("Please enter the block number that you want to read: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -990,23 +995,23 @@ void diagLoop() {
         }
         int retries = defaultRetries;
         int spare = defaultSpareThreshold;
-        Serial.print(F("Use the default retry count of "));
+        Serial.print("Use the default retry count of ");
         printDataNoSpace(retries);
-        Serial.print(F(" (return for yes, 'n' for no)? "));
+        Serial.print(" (return for yes, 'n' for no)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
             userInput = Serial.read();
             flushInput();
             if(userInput == 'n'){
-              Serial.print(F("Please enter the desired retry count: "));
+              Serial.print("Please enter the desired retry count: ");
               while(1){
                 if(readSerialValue(2) == true){
                   retries = serialBytes[0];
                   break;
                 }
                 else{
-                  Serial.print(F("Please enter the desired retry count: "));
+                  Serial.print("Please enter the desired retry count: ");
                 }
               }
               break;
@@ -1018,29 +1023,29 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Use the default retry count of "));
+              Serial.print("Use the default retry count of ");
               printDataNoSpace(retries);
-              Serial.print(F(" (return for yes, 'n' for no)? "));
+              Serial.print(" (return for yes, 'n' for no)? ");
             }
           }
         }
-        Serial.print(F("Use the default spare threshold of "));
+        Serial.print("Use the default spare threshold of ");
         printDataNoSpace(spare);
-        Serial.print(F(" (return for yes, 'n' for no)? "));
+        Serial.print(" (return for yes, 'n' for no)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
             userInput = Serial.read();
             flushInput();
             if(userInput == 'n'){
-              Serial.print(F("Please enter the desired spare threshold: "));
+              Serial.print("Please enter the desired spare threshold: ");
               while(1){
                 if(readSerialValue(2) == true){
                   spare = serialBytes[0];
                   break;
                 }
                 else{
-                  Serial.print(F("Please enter the desired spare threshold: "));
+                  Serial.print("Please enter the desired spare threshold: ");
                 }
               }
               break;
@@ -1052,19 +1057,19 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Use the default spare threshold of "));
+              Serial.print("Use the default spare threshold of ");
               printDataNoSpace(spare);
-              Serial.print(F(" (return for yes, 'n' for no)? "));
+              Serial.print(" (return for yes, 'n' for no)? ");
             }
           }
         }
         Serial.println();
-        Serial.print(F("Reading block "));
+        Serial.print("Reading block ");
         for(int i = 0; i < 3; i++){
           printDataNoSpace(address[i]);
         }
-        Serial.println(F("..."));
-        Serial.print(F("Command: 00 "));
+        Serial.println("...");
+        Serial.print("Command: 00 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -1074,7 +1079,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = profileRead(address[0], address[1], address[2], retries, spare);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
           Serial.println();
         }
         printRawData();
@@ -1084,7 +1089,7 @@ void diagLoop() {
 
 
 
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -1092,12 +1097,12 @@ void diagLoop() {
       }
       if((command.equals("4") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false) or (command.equalsIgnoreCase("O") and widgetMenu == true) or (command.equalsIgnoreCase("D") and diagMenu == true) or (command.equalsIgnoreCase("H") and diagMenuTenMeg == true)){
         clearScreen();
-        Serial.println(F("Current contents of the data buffer:"));
+        Serial.println("Current contents of the data buffer:");
         Serial.println();
         printRawData();
         Serial.println();
         uint16_t bufIndex = 0;
-        Serial.print(F("Please enter the address at which you want to modify the buffer: "));
+        Serial.print("Please enter the address at which you want to modify the buffer: ");
         while(1){
           if(readSerialValue(4) == true){
             bufIndex = (serialBytes[0] << 8) | serialBytes[1];
@@ -1105,12 +1110,12 @@ void diagLoop() {
                 break;
               }
           }
-          Serial.print(F("Please enter the address at which you want to modify the buffer: "));
+          Serial.print("Please enter the address at which you want to modify the buffer: ");
         }
         char charInput[2128];
         byte hexInput[1064];
         unsigned int charIndex = 0;
-        Serial.print(F("Please enter the data bytes that you wish to insert at that address: "));
+        Serial.print("Please enter the data bytes that you wish to insert at that address: ");
         while(1){
           while(1){
             if(Serial.available()){
@@ -1130,7 +1135,7 @@ void diagLoop() {
             break;
           }
           else{
-            Serial.print(F("Please enter the data bytes that you wish to insert at that address: "));
+            Serial.print("Please enter the data bytes that you wish to insert at that address: ");
             charIndex = 0;
           }
         }
@@ -1138,11 +1143,11 @@ void diagLoop() {
           blockDataBuffer[i + bufIndex] = hexInput[i];
         }
         Serial.println();
-        Serial.println(F("New contents of the data buffer:"));
+        Serial.println("New contents of the data buffer:");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1150,14 +1155,14 @@ void diagLoop() {
       
       if((command.equals("5") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false) or (command.equalsIgnoreCase("P") and widgetMenu == true) or (command.equalsIgnoreCase("E") and diagMenu == true) or (command.equalsIgnoreCase("I") and diagMenuTenMeg == true)){ // fill buffer with pattern
         clearScreen();
-        Serial.println(F("Current contents of the data buffer:"));
+        Serial.println("Current contents of the data buffer:");
         Serial.println();
         printRawData();
         Serial.println();
         char charInput[2128];
         byte hexInput[1064];
         unsigned int charIndex = 0;
-        Serial.print(F("Please enter the byte pattern you wish to fill the buffer with: "));
+        Serial.print("Please enter the byte pattern you wish to fill the buffer with: ");
         while(1){
           while(1){
             if(Serial.available()){
@@ -1177,7 +1182,7 @@ void diagLoop() {
             break;
           }
           else{
-            Serial.print(F("Please enter the byte pattern you wish to fill the buffer with: "));
+            Serial.print("Please enter the byte pattern you wish to fill the buffer with: ");
             charIndex = 0;
           }
         }
@@ -1185,11 +1190,11 @@ void diagLoop() {
           blockDataBuffer[i] = hexInput[i % charIndex];
         }
         Serial.println();
-        Serial.println(F("New contents of the data buffer:"));
+        Serial.println("New contents of the data buffer:");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1198,25 +1203,25 @@ void diagLoop() {
       else if(command.equals("6") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the block number that you want to write to: "));
+        Serial.print("Please enter the block number that you want to write to: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the block number that you want to write to: "));
+            Serial.print("Please enter the block number that you want to write to: ");
           }
         }
         for(int i = 0; i < 3; i++){
           address[i] = serialBytes[i];
         }
         Serial.println();
-        Serial.print(F("Writing the buffer to block "));
+        Serial.print("Writing the buffer to block ");
         for(int i = 0; i < 3; i++){
           printDataNoSpace(address[i]);
         }
-        Serial.println(F("..."));
-        Serial.print(F("Command: 01 "));
+        Serial.println("...");
+        Serial.print("Command: 01 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -1226,7 +1231,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = profileWrite(address[0], address[1], address[2]);
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -1235,7 +1240,7 @@ void diagLoop() {
         }
         printStatus();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1244,25 +1249,25 @@ void diagLoop() {
       else if(command.equals("7") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){ //write-verify block
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the block number that you want to write-verify to: "));
+        Serial.print("Please enter the block number that you want to write-verify to: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the block number that you want to write-verify to: "));
+            Serial.print("Please enter the block number that you want to write-verify to: ");
           }
         }
         for(int i = 0; i < 3; i++){
           address[i] = serialBytes[i];
         }
         Serial.println();
-        Serial.print(F("Write-verifying the buffer to block "));
+        Serial.print("Write-verifying the buffer to block ");
         for(int i = 0; i < 3; i++){
           printDataNoSpace(address[i]);
         }
-        Serial.println(F("..."));
-        Serial.print(F("Command: 02 "));
+        Serial.println("...");
+        Serial.print("Command: 02 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -1272,7 +1277,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = profileWriteVerify(address[0], address[1], address[2]);
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write-verify operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write-verify operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -1281,7 +1286,7 @@ void diagLoop() {
         }
         printStatus();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1307,27 +1312,27 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now writing the contents of the buffer to block "));
+            Serial.print("Now writing the contents of the buffer to block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(". Progress: "));
+            Serial.print(". Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             Serial.write("\033[1000D");
             if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
               Serial.println();
               Serial.println();
-              Serial.print(F("Error writing block "));
+              Serial.print("Error writing block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -1348,7 +1353,7 @@ void diagLoop() {
 
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1377,27 +1382,27 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now writing zeros to block "));
+            Serial.print("Now writing zeros to block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(". Progress: "));
+            Serial.print(". Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             Serial.write("\033[1000D");
             if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
               Serial.println();
               Serial.println();
-              Serial.print(F("Error writing block "));
+              Serial.print("Error writing block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -1420,7 +1425,7 @@ void diagLoop() {
 
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -1452,17 +1457,17 @@ void diagLoop() {
           driveSize[1] = i >> 8;
           driveSize[2] = i;
           profileRead(driveSize[0], driveSize[1], driveSize[2]);
-          Serial.print(F("Now comparing block "));
+          Serial.print("Now comparing block ");
           for(int j = 0; j < 3; j++){
             printDataNoSpace(driveSize[j]);
           }
-          Serial.print(F(" of "));
+          Serial.print(" of ");
           printDataNoSpace((highestBlock - 1) >> 16);
           printDataNoSpace((highestBlock - 1) >> 8);
           printDataNoSpace(highestBlock - 1);
-          Serial.print(F(" with the buffer. Progress: "));
+          Serial.print(" with the buffer. Progress: ");
           Serial.print(((float)i/(highestBlock - 1))*100);
-          Serial.print(F("%"));
+          Serial.print("%");
           Serial.write("\033[1000D");
           bool differentBlock = false;
           for(int i = 0; i < 532; i++){
@@ -1474,11 +1479,11 @@ void diagLoop() {
           if(differentBlock == true){
             Serial.println();
             Serial.println();
-            Serial.print(F("Block "));
+            Serial.print("Block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" doesn't match the contents of the data buffer!"));
+            Serial.print(" doesn't match the contents of the data buffer!");
             noOutliers = false;
             Serial.println();
             Serial.println();
@@ -1488,12 +1493,12 @@ void diagLoop() {
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error reading block "));
+            Serial.print("Error reading block ");
             printDataNoSpace(i >> 16);
             printDataNoSpace(i >> 8);
             printDataNoSpace(i);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -1516,10 +1521,10 @@ void diagLoop() {
         Serial.println();
         if(noOutliers == true){
           Serial.println();
-          Serial.println(F("All blocks match the buffer!"));
+          Serial.println("All blocks match the buffer!");
           Serial.println();
         }
-        Serial.print(F("Block comparison completed. Press return to continue..."));
+        Serial.print("Block comparison completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -1535,7 +1540,7 @@ void diagLoop() {
         Serial.println();
         highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
         flushInput();
-        Serial.print(F("Please enter 'h' to search for a series of hex bytes, 's' to search for a text string, or leave this prompt blank to search the drive for the full contents of the data buffer: "));
+        Serial.print("Please enter 'h' to search for a series of hex bytes, 's' to search for a text string, or leave this prompt blank to search the drive for the full contents of the data buffer: ");
         int searchMode = 0;
         while(1){
           if(Serial.available()){
@@ -1555,7 +1560,7 @@ void diagLoop() {
               break;
             }
             else{
-              Serial.print(F("Please enter 'h' to search for a series of hex bytes, 's' to search for a text string, or leave this prompt blank to search the drive for the full contents of the data buffer: "));
+              Serial.print("Please enter 'h' to search for a series of hex bytes, 's' to search for a text string, or leave this prompt blank to search the drive for the full contents of the data buffer: ");
               while(Serial.available()){
                 Serial.read();
               }
@@ -1565,7 +1570,7 @@ void diagLoop() {
         bool noMatches = true;
         if(searchMode == 0){
           Serial.println();
-          Serial.print(F("Please enter the series of hex bytes that you want to search for: "));
+          Serial.print("Please enter the series of hex bytes that you want to search for: ");
           char charInput[2128];
           byte hexInput[1064];
           unsigned int charIndex = 0;
@@ -1591,7 +1596,7 @@ void diagLoop() {
                 break;
               }
               else if(inByte == '\r' and goodInput == false){
-                Serial.print(F("Please enter the series of hex bytes that you want to search for: "));
+                Serial.print("Please enter the series of hex bytes that you want to search for: ");
                 charIndex = 0;
                 goodInput = true;
               }
@@ -1609,11 +1614,11 @@ void diagLoop() {
           for(int i = 0; i < stringLength; i++){
             searchData[i] = hexInput[i];
           }
-          Serial.print(F("Now searching every block on the disk for the hex data "));
+          Serial.print("Now searching every block on the disk for the hex data ");
           for(int i = 0; i < stringLength; i++){
             printDataSpace(searchData[i]);
           }
-          Serial.println(F("..."));
+          Serial.println("...");
           Serial.println();
           for(long int i = 0; i < highestBlock; i++){
             if(Serial.available()){
@@ -1624,17 +1629,17 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now searching block "));
+            Serial.print("Now searching block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(" for the provided hex data. Progress: "));
+            Serial.print(" for the provided hex data. Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             Serial.write("\033[1000D");
             bool match = false;
             bool searchStart = false;
@@ -1656,11 +1661,11 @@ void diagLoop() {
               noMatches = false;
               Serial.println();
               Serial.println();
-              Serial.print(F("Block "));
+              Serial.print("Block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" contains the desired data!"));
+              Serial.print(" contains the desired data!");
               Serial.println();
               Serial.println();
             }
@@ -1668,12 +1673,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -1693,7 +1698,7 @@ void diagLoop() {
           Serial.println();
           if(noMatches == true){
             Serial.println();
-            Serial.println(F("No matches found!"));
+            Serial.println("No matches found!");
             Serial.println();
           }
           else{
@@ -1702,7 +1707,7 @@ void diagLoop() {
         }
         else if(searchMode == 1){
           Serial.println();
-          Serial.print(F("Please enter the text string that you want to search for: "));
+          Serial.print("Please enter the text string that you want to search for: ");
           char charInput[2128];
           byte hexInput[1064];
           unsigned int charIndex = 0;
@@ -1729,11 +1734,11 @@ void diagLoop() {
           for(int i = 0; i < stringLength; i++){
             searchData[i] = charInput[i];
           }
-          Serial.print(F("Now searching every block on the disk for the text string '"));
+          Serial.print("Now searching every block on the disk for the text string '");
           for(int i = 0; i < stringLength; i++){
             Serial.write(searchData[i]);
           }
-          Serial.println(F("'..."));
+          Serial.println("'...");
           Serial.println();
           for(long int i = 0; i < highestBlock; i++){
             if(Serial.available()){
@@ -1744,17 +1749,17 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now searching block "));
+            Serial.print("Now searching block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(" for the provided text string. Progress: "));
+            Serial.print(" for the provided text string. Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             Serial.write("\033[1000D");
             bool match = false;
             bool searchStart = false;
@@ -1776,11 +1781,11 @@ void diagLoop() {
               noMatches = false;
               Serial.println();
               Serial.println();
-              Serial.print(F("Block "));
+              Serial.print("Block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" contains the desired string!"));
+              Serial.print(" contains the desired string!");
               Serial.println();
               Serial.println();
             }
@@ -1788,12 +1793,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -1813,7 +1818,7 @@ void diagLoop() {
           Serial.println();
           if(noMatches == true){
             Serial.println();
-            Serial.println(F("No matches found!"));
+            Serial.println("No matches found!");
             Serial.println();
           }
           else{
@@ -1838,17 +1843,17 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now searching block "));
+            Serial.print("Now searching block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(" for the contents of the buffer. Progress: "));
+            Serial.print(" for the contents of the buffer. Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             Serial.write("\033[1000D");
             bool match = true;
             for(int i = 0; i < 532; i++){
@@ -1861,11 +1866,11 @@ void diagLoop() {
               noMatches = false;
               Serial.println();
               Serial.println();
-              Serial.print(F("Block "));
+              Serial.print("Block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" matches the contents of the data buffer!"));
+              Serial.print(" matches the contents of the data buffer!");
               Serial.println();
               Serial.println();
             }
@@ -1873,12 +1878,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -1901,14 +1906,14 @@ void diagLoop() {
           Serial.println();
           if(noMatches == true){
             Serial.println();
-            Serial.println(F("No matches found!"));
+            Serial.println("No matches found!");
             Serial.println();
           }
           else{
             Serial.println();
           }
         }
-        Serial.print(F("Search completed. Press return to continue..."));
+        Serial.print("Search completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -1921,7 +1926,7 @@ void diagLoop() {
         getDriveType();
         setLEDColor(0, 1);
         Serial.println();
-        Serial.println(F("Start XMODEM receiver now..."));
+        Serial.println("Start XMODEM receiver now...");
         delay(2000);
         packetNum = 0x01;
         notPacketNum = 0xFE;
@@ -1977,26 +1982,26 @@ void diagLoop() {
             delay(2000);
             if(backupErrors != 0){
               setLEDColor(1, 0);
-              Serial.print(F("Warning: "));
+              Serial.print("Warning: ");
               Serial.print(backupErrors);
-              Serial.print(F(" disk errors were encountered during the operation!"));
+              Serial.print(" disk errors were encountered during the operation!");
               Serial.println();
             }
             else{
               setLEDColor(0, 1);
             }
             Serial.println();
-            Serial.println(F("XMODEM transfer complete!"));
+            Serial.println("XMODEM transfer complete!");
           }
           else{
             setLEDColor(1, 0);
             Serial.println();
-            Serial.println(F("Transfer timed out!"));
+            Serial.println("Transfer timed out!");
           }
           while(Serial.available()){
             inputData = Serial.read();
           }
-          Serial.print(F("Press return to continue..."));
+          Serial.print("Press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -2027,7 +2032,7 @@ void diagLoop() {
           Serial.println();
 
           highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
-          Serial.println(F("Start XMODEM sender when ready..."));
+          Serial.println("Start XMODEM sender when ready...");
           while(1){
             for(writeIndex = 0; writeIndex < 1064; writeIndex++){
               if(currentIndex % 1024 == 0){
@@ -2088,35 +2093,35 @@ void diagLoop() {
           if((currentIndex * 2) / 1064 != highestBlock and failed == false){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.print(F("File Size Mismatch: Drive size is "));
+            Serial.print("File Size Mismatch: Drive size is ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-            Serial.print(F(" blocks, but received file was "));
+            Serial.print(" blocks, but received file was ");
               printDataNoSpace(((currentIndex * 2) / 1064) >> 16);
               printDataNoSpace(((currentIndex * 2) / 1064) >> 8);
               printDataNoSpace(((currentIndex * 2) / 1064));
-            Serial.println(F(" blocks!"));
+            Serial.println(" blocks!");
           }
           Serial.println();
           if(backupErrors != 0){
             setLEDColor(1, 0);
-            Serial.print(F("Warning: "));
+            Serial.print("Warning: ");
             Serial.print(backupErrors);
-            Serial.print(F(" disk errors were encountered during the operation!"));
+            Serial.print(" disk errors were encountered during the operation!");
             Serial.println();
           }
           if(failed == false){
             setLEDColor(0, 1);
-            Serial.println(F("Drive restore succeeded!"));
+            Serial.println("Drive restore succeeded!");
           }
           else{
             setLEDColor(1, 0);
-            Serial.println(F("Drive restore failed!"));
+            Serial.println("Drive restore failed!");
           }
         }
 
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -2124,7 +2129,7 @@ void diagLoop() {
   
       if((command.equalsIgnoreCase("E") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false) or (command.equalsIgnoreCase("Q") and widgetMenu == true) or (command.equalsIgnoreCase("F") and diagMenu == true) or (command.equalsIgnoreCase("J") and diagMenuTenMeg == true) or (command.equalsIgnoreCase("C") and widgetServoMenu == true)){
         clearScreen();
-        Serial.print(F("Command Buffer Contents: "));
+        Serial.print("Command Buffer Contents: ");
         if(isTenMegDiagCommand == true){
           for(int i = 0; i <= commandBufferTenMegDiag[0]; i++){
             printDataSpace(commandBufferTenMegDiag[i]);
@@ -2143,29 +2148,29 @@ void diagLoop() {
         Serial.println();
         Serial.println();
         if(isTenMegDiagCommand == false and isWidgetCommand == false){
-          Serial.println(F("Command Interpretation (Assumes R/W Z8):"));
-          Serial.print(F("Command Type: "));
+          Serial.println("Command Interpretation (Assumes R/W Z8):");
+          Serial.print("Command Type: ");
           if(commandBufferStandard[0] == 0){
-            Serial.println(F("Read"));
+            Serial.println("Read");
           }
           else if(commandBufferStandard[0] == 1){
-            Serial.println(F("Write"));
+            Serial.println("Write");
           }
           else if(commandBufferStandard[0] == 2){
-            Serial.println(F("Write-Verify"));
+            Serial.println("Write-Verify");
           }
           else{
-            Serial.println(F("Unknown (Or maybe a diagnostic command!)"));
+            Serial.println("Unknown (Or maybe a diagnostic command!)");
           }
-          Serial.print(F("Block Number: "));
+          Serial.print("Block Number: ");
           for(int i = 1; i < 4; i++){
             printDataNoSpace(commandBufferStandard[i]);
           }
           Serial.println();
-          Serial.print(F("Retry Count: "));
+          Serial.print("Retry Count: ");
           printDataNoSpace(commandBufferStandard[4]);
           Serial.println();
-          Serial.print(F("Spare Threshold: "));
+          Serial.print("Spare Threshold: ");
           printDataNoSpace(commandBufferStandard[5]);
         }
         else if(isTenMegDiagCommand == true){
@@ -2177,11 +2182,11 @@ void diagLoop() {
         Serial.println();
         Serial.println();
         printWidgetStatus();
-        Serial.println(F("Data Buffer Contents: "));
+        Serial.println("Data Buffer Contents: ");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -2189,7 +2194,7 @@ void diagLoop() {
       
       else if(command.equalsIgnoreCase("F") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){
         clearScreen();
-        Serial.print(F("Please enter the 6-byte command that you want to send: "));
+        Serial.print("Please enter the 6-byte command that you want to send: ");
         char charInput[2128];
         byte hexInput[1064];
         unsigned int charIndex = 0;
@@ -2215,7 +2220,7 @@ void diagLoop() {
               break;
             }
             else if((inByte == '\r') and ((charIndex != 12) or (goodInput == false))){
-              Serial.print(F("Please enter the 6-byte command that you want to send: "));
+              Serial.print("Please enter the 6-byte command that you want to send: ");
               charIndex = 0;
               goodInput = true;
             }
@@ -2250,7 +2255,7 @@ void diagLoop() {
             break;
           }
           else{
-            Serial.print(F("Please enter the 6-byte command you want to send: "));
+            Serial.print("Please enter the 6-byte command you want to send: ");
             charIndex = 0;
           }
         }*/
@@ -2260,12 +2265,12 @@ void diagLoop() {
         Serial.println();
         if(commandBufferStandard[0] == 0){
           setLEDColor(0, 0);
-          Serial.print(F("Auto-detected as a read command. Reading block "));
+          Serial.print("Auto-detected as a read command. Reading block ");
           for(int i = 1; i < 4; i++){
             printDataNoSpace(commandBufferStandard[i]);
           }
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 6; i++){
             printDataSpace(commandBufferStandard[i]);
           }
@@ -2273,7 +2278,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = profileRead(commandBufferStandard[1], commandBufferStandard[2], commandBufferStandard[3], commandBufferStandard[4], commandBufferStandard[5]);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
             Serial.println();
           }
           printRawData();
@@ -2282,12 +2287,12 @@ void diagLoop() {
         }
         else if(commandBufferStandard[0] == 1){
           setLEDColor(0, 0);
-          Serial.print(F("Auto-detected as a write command. Writing the buffer to block "));
+          Serial.print("Auto-detected as a write command. Writing the buffer to block ");
           for(int i = 1; i < 4; i++){
             printDataNoSpace(commandBufferStandard[i]);
           }
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 6; i++){
             printDataSpace(commandBufferStandard[i]);
           }
@@ -2295,19 +2300,19 @@ void diagLoop() {
           Serial.println();
           bool writeSuccess = profileWrite(commandBufferStandard[1], commandBufferStandard[2], commandBufferStandard[3], commandBufferStandard[4], commandBufferStandard[5]);
           if(writeSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write operation."));
+            Serial.println("WARNING: Errors were encountered during the write operation.");
             Serial.println();
           }
           printStatus();
         }
         else if(commandBufferStandard[0] == 2){
           setLEDColor(0, 0);
-          Serial.print(F("Auto-detected as a write-verify command. Write-verifying the buffer to block "));
+          Serial.print("Auto-detected as a write-verify command. Write-verifying the buffer to block ");
           for(int i = 1; i < 4; i++){
             printDataNoSpace(commandBufferStandard[i]);
           }
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 6; i++){
             printDataSpace(commandBufferStandard[i]);
           }
@@ -2315,16 +2320,16 @@ void diagLoop() {
           Serial.println();
           bool writeVerifySuccess = profileWriteVerify(commandBufferStandard[1], commandBufferStandard[2], commandBufferStandard[3], commandBufferStandard[4], commandBufferStandard[5]);
           if(writeVerifySuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write-verify operation."));
+            Serial.println("WARNING: Errors were encountered during the write-verify operation.");
             Serial.println();
           }
           printStatus();
         }
         else{
-          Serial.println(F("Unknown if command is of read or write type. "));
-          Serial.println(F("Read commands return data and the status bytes are read before the data is sent to the ESProFile."));
-          Serial.println(F("Write commands don't return data and the status bytes are read after data has been written to the drive."));
-          Serial.print(F("Is this a read command (r) or a write command (w)? "));
+          Serial.println("Unknown if command is of read or write type. ");
+          Serial.println("Read commands return data and the status bytes are read before the data is sent to ESProFile.");
+          Serial.println("Write commands don't return data and the status bytes are read after data has been written to the drive.");
+          Serial.print("Is this a read command (r) or a write command (w)? ");
           while(1){
             if(Serial.available()) {
               delay(50);
@@ -2337,12 +2342,12 @@ void diagLoop() {
                 while(Serial.available()){
                   Serial.read();
                 }
-                Serial.print(F("Is this a read command (r) or a write command (w)? "));
+                Serial.print("Is this a read command (r) or a write command (w)? ");
               }
             }
           }
           Serial.println();
-          Serial.print(F("Executing command: "));
+          Serial.print("Executing command: ");
           for(int i = 0; i < 6; i++){
             printDataSpace(commandBufferStandard[i]);
           }
@@ -2353,7 +2358,7 @@ void diagLoop() {
             Serial.println();
             bool readSuccess = customProfileRead(commandBufferStandard[0], commandBufferStandard[1], commandBufferStandard[2], commandBufferStandard[3], commandBufferStandard[4], commandBufferStandard[5]);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered during the operation. The following data may be incorrect."));
+              Serial.println("WARNING: Errors were encountered during the operation. The following data may be incorrect.");
               Serial.println();
             }
             printRawData();
@@ -2365,13 +2370,13 @@ void diagLoop() {
             Serial.println();
             bool writeSuccess = customProfileWrite(commandBufferStandard[0], commandBufferStandard[1], commandBufferStandard[2], commandBufferStandard[3], commandBufferStandard[4], commandBufferStandard[5]);
             if(writeSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered during the operation."));
+              Serial.println("WARNING: Errors were encountered during the operation.");
               Serial.println();
             }
             printStatus();
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -2394,8 +2399,8 @@ void diagLoop() {
         customProfileRead(0x00, 0xFF, 0xFF, 0xFF, defaultRetries, defaultSpareThreshold);
         bool continueToMenu = true;
         if(blockDataBuffer[16] != 0xD6 or blockDataBuffer[17] != 0x06){
-          Serial.println(F("It doesn't look like you have the diagnostic Z8 ROM fitted in your ProFile, which is needed for all commands in this menu."));
-          Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+          Serial.println("It doesn't look like you have the diagnostic Z8 ROM fitted in your ProFile, which is needed for all commands in this menu.");
+          Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
           while(1){
             if(Serial.available()){
               delay(50);
@@ -2413,7 +2418,7 @@ void diagLoop() {
                 while(Serial.available()){
                   Serial.read();
                 }
-                Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+                Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
               }
             }
           }
@@ -2442,8 +2447,8 @@ void diagLoop() {
         customProfileRead(0x00, 0xFF, 0xFF, 0xFF, defaultRetries, defaultSpareThreshold);
         bool continueToMenu = true;
         if(blockDataBuffer[16] != 0xD3 or blockDataBuffer[17] != 0x11){
-          Serial.println(F("It doesn't look like you have the diagnostic Z8 ROM fitted in your ProFile, which is needed for all commands in this menu."));
-          Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+          Serial.println("It doesn't look like you have the diagnostic Z8 ROM fitted in your ProFile, which is needed for all commands in this menu.");
+          Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
           while(1){
             if(Serial.available()){
               delay(50);
@@ -2458,7 +2463,7 @@ void diagLoop() {
                 break;
               }
               else{
-                Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+                Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
                 while(Serial.available()){
                   Serial.read();
                 }
@@ -2490,8 +2495,8 @@ void diagLoop() {
         customProfileRead(0x00, 0xFF, 0xFF, 0xFF, defaultRetries, defaultSpareThreshold);
         bool continueToMenu = true;
         if(blockDataBuffer[16] != 0x1A or blockDataBuffer[17] != 0x45){
-          Serial.println(F("It doesn't look like your drive is a Widget (or maybe it just has the wrong firmware version). All commands in this menu require a Widget drive and some commands require Widget firmware version 1A45."));
-          Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+          Serial.println("It doesn't look like your drive is a Widget (or maybe it just has the wrong firmware version). All commands in this menu require a Widget drive and some commands require Widget firmware version 1A45.");
+          Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
           while(1){
             if(Serial.available()){
               delay(50);
@@ -2506,7 +2511,7 @@ void diagLoop() {
                 break;
               }
               else{
-                Serial.print(F("Do you want to continue anyway (return for yes, 'n' to cancel)? "));
+                Serial.print("Do you want to continue anyway (return for yes, 'n' to cancel)? ");
                 while(Serial.available()){
                   Serial.read();
                 }
@@ -2542,13 +2547,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the block number that you want to repeatedly read from: "));
+        Serial.print("Please enter the block number that you want to repeatedly read from: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the block number that you want to repeatedly read from: "));
+            Serial.print("Please enter the block number that you want to repeatedly read from: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -2557,33 +2562,33 @@ void diagLoop() {
 
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly reading block "));
+          Serial.print("Repeatedly reading block ");
           printDataNoSpace(address[0]);
           printDataNoSpace(address[1]);
           printDataNoSpace(address[2]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           bool readSuccess = customProfileRead(0x00, address[0], address[1], address[2], defaultRetries, defaultSpareThreshold);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
             Serial.println();
           }
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error reading on pass "));
+            Serial.print("Error reading on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -2599,9 +2604,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated read test terminated."));
+        Serial.println("Repeated read test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -2612,13 +2617,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the block number that you want to repeatedly write to: "));
+        Serial.print("Please enter the block number that you want to repeatedly write to: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the block number that you want to repeatedly write to: "));
+            Serial.print("Please enter the block number that you want to repeatedly write to: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -2627,33 +2632,33 @@ void diagLoop() {
 
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly writing block "));
+          Serial.print("Repeatedly writing block ");
           printDataNoSpace(address[0]);
           printDataNoSpace(address[1]);
           printDataNoSpace(address[2]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           bool writeSuccess = customProfileWrite(0x01, address[0], address[1], address[2]);
           if(writeSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the write operation. The following data may be incorrect.");
             Serial.println();
           }
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error writing on pass "));
+            Serial.print("Error writing on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -2669,9 +2674,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated write test terminated."));
+        Serial.println("Repeated write test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -2702,19 +2707,19 @@ void diagLoop() {
             driveSize[1] = i >> 8;
             driveSize[2] = i;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now reading block "));
+            Serial.print("Now reading block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(". Progress: "));
+            Serial.print(". Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             if(repeat == true){
-              Serial.print(F(" - Pass "));
+              Serial.print(" - Pass ");
               Serial.print(passes);
             }
             Serial.write("\033[1000D");
@@ -2722,12 +2727,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(i >> 16);
               printDataNoSpace(i >> 8);
               printDataNoSpace(i);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -2749,7 +2754,7 @@ void diagLoop() {
         }
 
         Serial.println();
-        Serial.print(F("Read test completed. Press return to continue..."));
+        Serial.print("Read test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -2785,19 +2790,19 @@ void diagLoop() {
               driveSize[1] = i >> 8;
               driveSize[2] = i;
               profileRead(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Phase 1 - Now reading block "));
+              Serial.print("Phase 1 - Now reading block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -2805,12 +2810,12 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error reading block "));
+                Serial.print("Error reading block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -2849,19 +2854,19 @@ void diagLoop() {
               driveSize[1] = i >> 8;
               driveSize[2] = i;
               profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Phase 2 - Now writing test pattern to block "));
+              Serial.print("Phase 2 - Now writing test pattern to block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -2869,12 +2874,12 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block "));
+                Serial.print("Error writing block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -2898,19 +2903,19 @@ void diagLoop() {
               driveSize[1] = i >> 8;
               driveSize[2] = i;
               profileRead(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Phase 3 - Now rereading block "));
+              Serial.print("Phase 3 - Now rereading block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -2924,16 +2929,16 @@ void diagLoop() {
                 Serial.println();
                 Serial.println();
                 blockError = false;
-                Serial.print(F("Error rereading block "));
+                Serial.print("Error rereading block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.print(F("!"));
+                Serial.print("!");
                 if(blockError == true){
-                  Serial.print(F(" The data that we read back didn't match what we wrote to the block!"));
+                  Serial.print(" The data that we read back didn't match what we wrote to the block!");
                 }
                 Serial.println();
-                Serial.println(F("Status Interpretation:"));
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -2956,7 +2961,7 @@ void diagLoop() {
         }
 
         Serial.println();
-        Serial.print(F("Read-Write-Read test completed. Press return to continue..."));
+        Serial.print("Read-Write-Read test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -2996,19 +3001,19 @@ void diagLoop() {
                 blockDataBuffer[i] = B01010101;
               }
               profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Now writing block "));
+              Serial.print("Now writing block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -3016,13 +3021,13 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block "));
+                Serial.print("Error writing block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.print(F(" with pattern 01010101 (0x55)"));
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.print(" with pattern 01010101 (0x55)");
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3041,13 +3046,13 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block "));
+                Serial.print("Error writing block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.print(F(" with pattern 10101010 (0xAA)"));
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.print(" with pattern 10101010 (0xAA)");
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3067,11 +3072,11 @@ void diagLoop() {
         if(abort == true){
           Serial.println();
           Serial.println();
-          Serial.println(F("Write test terminated by keypress."));
+          Serial.println("Write test terminated by keypress.");
         }
 
         Serial.println();
-        Serial.print(F("Write test completed. Press return to continue..."));
+        Serial.print("Write test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3106,19 +3111,19 @@ void diagLoop() {
             driveSize[1] = randomBlock >> 8;
             driveSize[2] = randomBlock;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now reading randomly selected block "));
+            Serial.print("Now reading randomly selected block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(". Progress: "));
+            Serial.print(". Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             if(repeat == true){
-              Serial.print(F(" - Pass "));
+              Serial.print(" - Pass ");
               Serial.print(passes);
             }
             Serial.write("\033[1000D");
@@ -3126,12 +3131,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(randomBlock >> 16);
               printDataNoSpace(randomBlock >> 8);
               printDataNoSpace(randomBlock);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -3149,11 +3154,11 @@ void diagLoop() {
         if(abort == true){
           Serial.println();
           Serial.println();
-          Serial.println(F("Read test terminated by keypress."));
+          Serial.println("Read test terminated by keypress.");
         }
 
         Serial.println();
-        Serial.print(F("Read test completed. Press return to continue..."));
+        Serial.print("Read test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3198,19 +3203,19 @@ void diagLoop() {
                 blockDataBuffer[i] = B01010101;
               }
               profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Now writing randomly selected block "));
+              Serial.print("Now writing randomly selected block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -3218,13 +3223,13 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block "));
+                Serial.print("Error writing block ");
                 printDataNoSpace(randomBlock >> 16);
                 printDataNoSpace(randomBlock >> 8);
                 printDataNoSpace(randomBlock);
-                Serial.print(F(" with pattern 01010101"));
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.print(" with pattern 01010101");
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3243,13 +3248,13 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block "));
+                Serial.print("Error writing block ");
                 printDataNoSpace(i >> 16);
                 printDataNoSpace(i >> 8);
                 printDataNoSpace(i);
-                Serial.print(F(" with pattern 01010101"));
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.print(" with pattern 01010101");
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3269,11 +3274,11 @@ void diagLoop() {
         if(abort == true){
           Serial.println();
           Serial.println();
-          Serial.println(F("Write test terminated by keypress."));
+          Serial.println("Write test terminated by keypress.");
         }
 
         Serial.println();
-        Serial.print(F("Write test completed. Press return to continue..."));
+        Serial.print("Write test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3313,19 +3318,19 @@ void diagLoop() {
             driveSize[1] = butterflyBlock >> 8;
             driveSize[2] = butterflyBlock;
             profileRead(driveSize[0], driveSize[1], driveSize[2]);
-            Serial.print(F("Now performing butterfly read test on block "));
+            Serial.print("Now performing butterfly read test on block ");
             for(int j = 0; j < 3; j++){
               printDataNoSpace(driveSize[j]);
             }
-            Serial.print(F(" of "));
+            Serial.print(" of ");
             printDataNoSpace((highestBlock - 1) >> 16);
             printDataNoSpace((highestBlock - 1) >> 8);
             printDataNoSpace(highestBlock - 1);
-            Serial.print(F(". Progress: "));
+            Serial.print(". Progress: ");
             Serial.print(((float)i/(highestBlock - 1))*100);
-            Serial.print(F("%"));
+            Serial.print("%");
             if(repeat == true){
-              Serial.print(F(" - Pass "));
+              Serial.print(" - Pass ");
               Serial.print(passes);
             }
             Serial.write("\033[1000D");
@@ -3333,12 +3338,12 @@ void diagLoop() {
               setLEDColor(1, 0);
               Serial.println();
               Serial.println();
-              Serial.print(F("Error reading block "));
+              Serial.print("Error reading block ");
               printDataNoSpace(butterflyBlock >> 16);
               printDataNoSpace(butterflyBlock >> 8);
               printDataNoSpace(butterflyBlock);
-              Serial.println(F("!"));
-              Serial.println(F("Status Interpretation:"));
+              Serial.println("!");
+              Serial.println("Status Interpretation:");
               for(int k = 0; k < 3; k++){
                 for(int l = 0; l < 8; l++){
                   if(bitRead(driveStatus[k], l) == 1){
@@ -3357,11 +3362,11 @@ void diagLoop() {
         if(abort == true){
           Serial.println();
           Serial.println();
-          Serial.println(F("Butterfly read test terminated by keypress."));
+          Serial.println("Butterfly read test terminated by keypress.");
         }
 
         Serial.println();
-        Serial.print(F("Butterfly read test completed. Press return to continue..."));
+        Serial.print("Butterfly read test completed. Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3405,19 +3410,19 @@ void diagLoop() {
                 blockDataBuffer[i] = 0x55;
               }
               profileWrite(driveSize[0], driveSize[1], driveSize[2]);
-              Serial.print(F("Now performing butterfly write test on block "));
+              Serial.print("Now performing butterfly write test on block ");
               for(int j = 0; j < 3; j++){
                 printDataNoSpace(driveSize[j]);
               }
-              Serial.print(F(" of "));
+              Serial.print(" of ");
               printDataNoSpace((highestBlock - 1) >> 16);
               printDataNoSpace((highestBlock - 1) >> 8);
               printDataNoSpace(highestBlock - 1);
-              Serial.print(F(". Progress: "));
+              Serial.print(". Progress: ");
               Serial.print(((float)i/(highestBlock - 1))*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               if(repeat == true){
-                Serial.print(F(" - Pass "));
+                Serial.print(" - Pass ");
                 Serial.print(passes);
               }
               Serial.write("\033[1000D");
@@ -3425,12 +3430,12 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block with pattern 01010101 (0x55)"));
+                Serial.print("Error writing block with pattern 01010101 (0x55)");
                 printDataNoSpace(butterflyBlock >> 16);
                 printDataNoSpace(butterflyBlock >> 8);
                 printDataNoSpace(butterflyBlock);
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3449,12 +3454,12 @@ void diagLoop() {
                 setLEDColor(1, 0);
                 Serial.println();
                 Serial.println();
-                Serial.print(F("Error writing block with pattern 10101010 (0xAA)"));
+                Serial.print("Error writing block with pattern 10101010 (0xAA)");
                 printDataNoSpace(butterflyBlock >> 16);
                 printDataNoSpace(butterflyBlock >> 8);
                 printDataNoSpace(butterflyBlock);
-                Serial.println(F("!"));
-                Serial.println(F("Status Interpretation:"));
+                Serial.println("!");
+                Serial.println("Status Interpretation:");
                 for(int k = 0; k < 3; k++){
                   for(int l = 0; l < 8; l++){
                     if(bitRead(driveStatus[k], l) == 1){
@@ -3473,16 +3478,16 @@ void diagLoop() {
           if(abort == true){
             Serial.println();
             Serial.println();
-            Serial.println(F("Butterfly write test terminated by keypress."));
+            Serial.println("Butterfly write test terminated by keypress.");
           }
 
           Serial.println();
-          Serial.print(F("Butterfly write test completed. "));
+          Serial.print("Butterfly write test completed. ");
         }
         else{
           Serial.println();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3492,13 +3497,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format CCHHSS: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format CCHHSS: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -3506,23 +3511,23 @@ void diagLoop() {
         }
         int retries = defaultRetries;
         int spare = defaultSpareThreshold;
-        Serial.print(F("Use the default retry count of "));
+        Serial.print("Use the default retry count of ");
         printDataNoSpace(retries);
-        Serial.print(F(" (return for yes, 'n' for no)? "));
+        Serial.print(" (return for yes, 'n' for no)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
             userInput = Serial.read();
             flushInput();
             if(userInput == 'n'){
-              Serial.print(F("Please enter the desired retry count: "));
+              Serial.print("Please enter the desired retry count: ");
               while(1){
                 if(readSerialValue(2) == true){
                   retries = serialBytes[0];
                   break;
                 }
                 else{
-                  Serial.print(F("Please enter the desired retry count: "));
+                  Serial.print("Please enter the desired retry count: ");
                 }
               }
               break;
@@ -3534,29 +3539,29 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Use the default retry count of "));
+              Serial.print("Use the default retry count of ");
               printDataNoSpace(retries);
-              Serial.print(F(" (return for yes, 'n' for no)? "));
+              Serial.print(" (return for yes, 'n' for no)? ");
             }
           }
         }
-        Serial.print(F("Use the default spare threshold of "));
+        Serial.print("Use the default spare threshold of ");
         printDataNoSpace(spare);
-        Serial.print(F(" (return for yes, 'n' for no)? "));
+        Serial.print(" (return for yes, 'n' for no)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
             userInput = Serial.read();
             flushInput();
             if(userInput == 'n'){
-              Serial.print(F("Please enter the desired spare threshold: "));
+              Serial.print("Please enter the desired spare threshold: ");
               while(1){
                 if(readSerialValue(2) == true){
                   spare = serialBytes[0];
                   break;
                 }
                 else{
-                  Serial.print(F("Please enter the desired spare threshold: "));
+                  Serial.print("Please enter the desired spare threshold: ");
                 }
               }
               break;
@@ -3568,21 +3573,21 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Use the default spare threshold of "));
+              Serial.print("Use the default spare threshold of ");
               printDataNoSpace(spare);
-              Serial.print(F(" (return for yes, 'n' for no)? "));
+              Serial.print(" (return for yes, 'n' for no)? ");
             }
           }
         }
         Serial.println();
-        Serial.print(F("Reading cylinder "));
+        Serial.print("Reading cylinder ");
         printDataNoSpace(address[0]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(address[1]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(address[2]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: 00 "));
+        Serial.println("...");
+        Serial.print("Command: 00 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -3592,14 +3597,14 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = customProfileRead(0x00, address[0], address[1], address[2], retries, spare);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
           Serial.println();
         }
         printRawData();
         Serial.println();
         printStatus();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -3608,27 +3613,27 @@ void diagLoop() {
       else if(command.equals("2") and testMenu == false and diagMenu == true and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to write to in the format CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to write to in the format CCHHSS: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to write to in the format CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to write to in the format CCHHSS: ");
           }
         }
         for(int i = 0; i < 3; i++){
           address[i] = serialBytes[i];
         }
         Serial.println();
-        Serial.print(F("Writing the buffer to cylinder "));
+        Serial.print("Writing the buffer to cylinder ");
         printDataNoSpace(address[0]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(address[1]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(address[2]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: 01 "));
+        Serial.println("...");
+        Serial.print("Command: 01 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -3638,7 +3643,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = customProfileWrite(0x01, address[0], address[1], address[2]);
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -3647,7 +3652,7 @@ void diagLoop() {
         }
         printStatus();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3658,13 +3663,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format CCHHSS: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format CCHHSS: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -3673,35 +3678,35 @@ void diagLoop() {
 
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly reading cylinder "));
+          Serial.print("Repeatedly reading cylinder ");
           printDataNoSpace(address[0]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(address[1]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(address[2]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           bool readSuccess = customProfileRead(0x00, address[0], address[1], address[2], defaultRetries, defaultSpareThreshold);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
             Serial.println();
           }
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error reading on pass "));
+            Serial.print("Error reading on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -3717,9 +3722,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated read test terminated."));
+        Serial.println("Repeated read test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3730,13 +3735,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format CCHHSS: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format CCHHSS: ");
           }
         }
         for(int i = 0; i < 3; i++){
@@ -3745,35 +3750,35 @@ void diagLoop() {
 
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly writing cylinder "));
+          Serial.print("Repeatedly writing cylinder ");
           printDataNoSpace(address[0]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(address[1]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(address[2]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           bool writeSuccess = customProfileWrite(0x01, address[0], address[1], address[2]);
           if(writeSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the write operation. The following data may be incorrect.");
             Serial.println();
           }
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error writing on pass "));
+            Serial.print("Error writing on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -3789,9 +3794,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated write test terminated."));
+        Serial.println("Repeated write test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3800,27 +3805,27 @@ void diagLoop() {
       else if(command.equals("5") and testMenu == false and diagMenu == true and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to write-verify to in the format CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to write-verify to in the format CCHHSS: ");
         while(1){
           if(readSerialValue(6) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to write-verify to in the format CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to write-verify to in the format CCHHSS: ");
           }
         }
         for(int i = 0; i < 3; i++){
           address[i] = serialBytes[i];
         }
         Serial.println();
-        Serial.print(F("Write-verifying the buffer to cylinder "));
+        Serial.print("Write-verifying the buffer to cylinder ");
         printDataNoSpace(address[0]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(address[1]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(address[2]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: 02 "));
+        Serial.println("...");
+        Serial.print("Command: 02 ");
         for(int i = 0; i < 3; i++){
           printDataSpace(address[i]);
         }
@@ -3830,7 +3835,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = customProfileWrite(0x02, address[0], address[1], address[2]);
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write-verify operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write-verify operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -3839,7 +3844,7 @@ void diagLoop() {
         }
         printStatus();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3852,73 +3857,73 @@ void diagLoop() {
         confirm();
         if(confirmOperation == true){
           Serial.println();
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
           Serial.println();
           setLEDColor(0, 0);
-          Serial.println(F("Step 1 - Formatting the drive..."));
-          Serial.println(F("Command: 03 00 00 00 0A 03"));
+          Serial.println("Step 1 - Formatting the drive...");
+          Serial.println("Command: 03 00 00 00 0A 03");
           bool readSuccess = customProfileRead(0x03, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold, true);
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered during the format operation. The format may not have completed successfully."));
+            Serial.println("WARNING: Errors were encountered during the format operation. The format may not have completed successfully.");
           }
           else{
             setLEDColor(0, 1);
           }
           Serial.println();
-          Serial.print(F("Number of bad blocks found during the format procedure: "));
+          Serial.print("Number of bad blocks found during the format procedure: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.print(F("Remove jumper and press return to continue..."));
+          Serial.print("Remove jumper and press return to continue...");
           flushInput();
           while(!Serial.available());
           Serial.println();
           flushInput();
           setLEDColor(0, 0);
-          Serial.println(F("Step 2 - Performing a surface scan..."));
-          Serial.println(F("Command: 04 00 00 00 0A 03"));
+          Serial.println("Step 2 - Performing a surface scan...");
+          Serial.println("Command: 04 00 00 00 0A 03");
           readSuccess = customProfileRead(0x04, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold, true);
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully."));
+            Serial.println("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully.");
           }
           else{
             setLEDColor(0, 1);
           }
           Serial.println();
-          Serial.print(F("Number of bad blocks found during the surface scan: "));
+          Serial.print("Number of bad blocks found during the surface scan: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
           setLEDColor(0, 0);
-          Serial.println(F("Step 3 - Creating the spare table..."));
-          Serial.println(F("Command: 05 00 00 00 0A 03"));
+          Serial.println("Step 3 - Creating the spare table...");
+          Serial.println("Command: 05 00 00 00 0A 03");
           readSuccess = customProfileRead(0x05, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold);
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered while creating the spare table. The spare table may not have been created successfully."));
+            Serial.println("WARNING: Errors were encountered while creating the spare table. The spare table may not have been created successfully.");
           }
           else{
             setLEDColor(0, 1);
           }
           Serial.println();
-          Serial.print(F("Number of bad sectors within the spare table (cylinder 4D) found during spare table initialization: "));
+          Serial.print("Number of bad sectors within the spare table (cylinder 4D) found during spare table initialization: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
           setLEDColor(0, 1);
-          Serial.println(F("Low-level format finished! "));
+          Serial.println("Low-level format finished! ");
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3927,7 +3932,7 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint16_t RAMIndex = 0;
-        Serial.print(F("Please enter the base RAM address that you want to view: "));
+        Serial.print("Please enter the base RAM address that you want to view: ");
         while(1){
           if(readSerialValue(4) == true){
             RAMIndex = (serialBytes[0] << 8) | serialBytes[1];
@@ -3935,22 +3940,22 @@ void diagLoop() {
               break;
             }
           }
-          Serial.print(F("Please enter the base RAM address that you want to view: "));
+          Serial.print("Please enter the base RAM address that you want to view: ");
         }
         Serial.println();
         setLEDColor(0, 0);
-        Serial.print(F("Reading from RAM address 00"));
+        Serial.print("Reading from RAM address 00");
         printDataNoSpace(RAMIndex >> 8);
         printDataNoSpace(RAMIndex);
-        Serial.print(F(" through 00"));
+        Serial.print(" through 00");
         int finalRAMIndex = RAMIndex + 531;
         if(finalRAMIndex > 1023){
           finalRAMIndex = 1023;
         }
         printDataNoSpace(finalRAMIndex >> 8);
         printDataNoSpace(finalRAMIndex);
-        Serial.println(F("..."));
-        Serial.print(F("Command: 08 "));
+        Serial.println("...");
+        Serial.print("Command: 08 ");
         printDataSpace(RAMIndex >> 8);
         printDataSpace(RAMIndex);
         printDataSpace(0x00);
@@ -3961,7 +3966,7 @@ void diagLoop() {
         if(readSuccess == 0){
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
         }
         else{
           setLEDColor(0, 1);
@@ -3980,7 +3985,7 @@ void diagLoop() {
         printRawData();
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -3989,7 +3994,7 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint16_t RAMIndex = 0;
-        Serial.print(F("Please enter the base RAM address that you want to write the buffer to: "));
+        Serial.print("Please enter the base RAM address that you want to write the buffer to: ");
         while(1){
           if(readSerialValue(4) == true){
             RAMIndex = (serialBytes[0] << 8) | serialBytes[1];
@@ -3997,7 +4002,7 @@ void diagLoop() {
               break;
             }
           }
-          Serial.print(F("Please enter the base RAM address that you want to write the buffer to: "));
+          Serial.print("Please enter the base RAM address that you want to write the buffer to: ");
         }
         uint16_t bytesToWrite = 1024 - RAMIndex;
         if(bytesToWrite > 532){
@@ -4005,14 +4010,14 @@ void diagLoop() {
         }
         Serial.println();
         setLEDColor(0, 0);
-        Serial.print(F("Writing the buffer to RAM addresses 00"));
+        Serial.print("Writing the buffer to RAM addresses 00");
         printDataNoSpace(RAMIndex >> 8);
         printDataNoSpace(RAMIndex);
-        Serial.print(F(" through 00"));
+        Serial.print(" through 00");
         printDataNoSpace((RAMIndex + bytesToWrite - 1) >> 8);
         printDataNoSpace(RAMIndex + bytesToWrite - 1);
-        Serial.println(F("..."));
-        Serial.print(F("Command: 09 "));
+        Serial.println("...");
+        Serial.print("Command: 09 ");
         printDataSpace(RAMIndex >> 8);
         printDataSpace(RAMIndex);
         printDataSpace(0x00);
@@ -4021,7 +4026,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = customProfileWrite(0x09, RAMIndex >> 8, RAMIndex, 0x00, defaultRetries, defaultSpareThreshold, bytesToWrite);
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -4030,7 +4035,7 @@ void diagLoop() {
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4040,50 +4045,50 @@ void diagLoop() {
         setLEDColor(0, 1);
         confirm();
         if(confirmOperation == true){
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
           Serial.println();
           setLEDColor(0, 0);
-          Serial.println(F("Formatting drive..."));
-          Serial.println(F("Command: 03 00 00 00 0A 03"));
+          Serial.println("Formatting drive...");
+          Serial.println("Command: 03 00 00 00 0A 03");
           bool readSuccess = customProfileRead(0x03, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold, true);
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered during the format operation. The format may not have completed successfully. You can remove the jumper now."));
+            Serial.println("WARNING: Errors were encountered during the format operation. The format may not have completed successfully. You can remove the jumper now.");
             Serial.println();
           }
           else{
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Format complete! You can remove the jumper now."));
+            Serial.println("Format complete! You can remove the jumper now.");
           }
-          Serial.print(F("Number of bad blocks found during the format procedure: "));
+          Serial.print("Number of bad blocks found during the format procedure: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.println(F("Bad block data returned by the format command:"));
+          Serial.println("Bad block data returned by the format command:");
           Serial.println();
           printRawData();
           Serial.println();
-          Serial.println(F("Data Interpretation:"));
+          Serial.println("Data Interpretation:");
           if(blockDataBuffer[0] == 0xFF and blockDataBuffer[1] == 0xFF and blockDataBuffer[2] == 0xFF and blockDataBuffer[3] == 0xFF){
-            Serial.println(F("No bad blocks found!"));
+            Serial.println("No bad blocks found!");
           }
           else{
             for(int i = 0; i < 532; i += 4){
               if((blockDataBuffer[i] == 0xFF and blockDataBuffer[i + 1] == 0xFF and blockDataBuffer[i + 2] == 0xFF and blockDataBuffer[i + 3] == 0xFF) or (i > driveStatus[3] * 4)){
                 break;
               }
-              Serial.print(F("Bad block on cylinder "));
+              Serial.print("Bad block on cylinder ");
               printDataNoSpace(blockDataBuffer[i]);
-              Serial.print(F(", head "));
+              Serial.print(", head ");
               printDataNoSpace(blockDataBuffer[i + 1]);
-              Serial.print(F(", and sector "));
+              Serial.print(", and sector ");
               printDataNoSpace(blockDataBuffer[i + 2]);
-              Serial.print(F(" (AKA block "));
+              Serial.print(" (AKA block ");
               uint32_t LBA = 0;
               if(blockDataBuffer[i] < 77){
                 LBA = 64 * blockDataBuffer[i] + 16 * blockDataBuffer[i + 1] + blockDataBuffer[i + 2];
@@ -4098,19 +4103,19 @@ void diagLoop() {
                 printDataNoSpace(LBA);
               }
               else{
-                Serial.print(F("SPARE TABLE"));
+                Serial.print("SPARE TABLE");
               }
-              Serial.print(F("). Reason for block being bad: "));
+              Serial.print("). Reason for block being bad: ");
               bool statusGood = 1;
               for(int j = 0; j < 8; j++){
                 if(bitRead(blockDataBuffer[i + 3], j) == 1){
                   statusGood = 0;
                   Serial.print(statusMessages[2][j]);
-                  Serial.print(F(" "));
+                  Serial.print(" ");
                 }
               }
               if(statusGood == 1){
-                Serial.println(F("Unknown"));
+                Serial.println("Unknown");
               }
               else{
                 Serial.println();
@@ -4120,7 +4125,7 @@ void diagLoop() {
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4128,44 +4133,44 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("A") and testMenu == false and diagMenu == true and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){ //Scan
         clearScreen();
         setLEDColor(0, 0);
-        Serial.println(F("Performing a surface scan on the drive..."));
-        Serial.println(F("Command: 04 00 00 00 0A 03"));
+        Serial.println("Performing a surface scan on the drive...");
+        Serial.println("Command: 04 00 00 00 0A 03");
         bool readSuccess = customProfileRead(0x04, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold, true);
         if(readSuccess == 0){
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully."));
+          Serial.println("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully.");
           Serial.println();
         }
         else{
           setLEDColor(0, 1);
           Serial.println();
-          Serial.println(F("Surface scan complete!"));
+          Serial.println("Surface scan complete!");
         }
-        Serial.print(F("Number of bad blocks found during the scan: "));
+        Serial.print("Number of bad blocks found during the scan: ");
         printDataNoSpace(driveStatus[3]);
         Serial.println();
         Serial.println();
-        Serial.println(F("List of these bad blocks:"));
+        Serial.println("List of these bad blocks:");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.println(F("Data Interpretation:"));
+        Serial.println("Data Interpretation:");
         if(blockDataBuffer[0] == 0xFF and blockDataBuffer[1] == 0xFF and blockDataBuffer[2] == 0xFF and blockDataBuffer[3] == 0xFF){
-          Serial.println(F("No bad blocks found!"));
+          Serial.println("No bad blocks found!");
         }
         else{
           for(int i = 0; i < 532; i += 4){
             if((blockDataBuffer[i] == 0xFF and blockDataBuffer[i + 1] == 0xFF and blockDataBuffer[i + 2] == 0xFF and blockDataBuffer[i + 3] == 0xFF) or (i > driveStatus[3] * 4)){
               break;
             }
-            Serial.print(F("Bad block on cylinder "));
+            Serial.print("Bad block on cylinder ");
             printDataNoSpace(blockDataBuffer[i]);
-            Serial.print(F(", head "));
+            Serial.print(", head ");
             printDataNoSpace(blockDataBuffer[i + 1]);
-            Serial.print(F(", and sector "));
+            Serial.print(", and sector ");
             printDataNoSpace(blockDataBuffer[i + 2]);
-            Serial.print(F(" (AKA block "));
+            Serial.print(" (AKA block ");
             uint32_t LBA = 0;
             if(blockDataBuffer[i] < 77){
               LBA = 64 * blockDataBuffer[i] + 16 * blockDataBuffer[i + 1] + blockDataBuffer[i + 2];
@@ -4180,19 +4185,19 @@ void diagLoop() {
               printDataNoSpace(LBA);
             }
             else{
-              Serial.print(F("SPARE TABLE"));
+              Serial.print("SPARE TABLE");
             }
-            Serial.print(F("). Reason for block being bad: "));
+            Serial.print("). Reason for block being bad: ");
             bool statusGood = 1;
             for(int j = 0; j < 8; j++){
               if(bitRead(blockDataBuffer[i + 3], j) == 1){
                 statusGood = 0;
                 Serial.print(statusMessages[2][j]);
-                Serial.print(F(" "));
+                Serial.print(" ");
               }
             }
             if(statusGood == 1){
-              Serial.println(F("Unknown"));
+              Serial.println("Unknown");
             }
             else{
               Serial.println();
@@ -4201,7 +4206,7 @@ void diagLoop() {
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4209,46 +4214,46 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("B") and testMenu == false and diagMenu == true and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){ //Init Spare Table
         clearScreen();
         setLEDColor(0, 0);
-        Serial.println(F("Initializing the drive's spare table..."));
-        Serial.println(F("Command: 05 00 00 00 0A 03"));
+        Serial.println("Initializing the drive's spare table...");
+        Serial.println("Command: 05 00 00 00 0A 03");
         bool readSuccess = customProfileRead(0x05, 0x00, 0x00, 0x00, defaultRetries, defaultSpareThreshold);
         if(readSuccess == 0){
           Serial.println();
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered during the init spare table operation. The spare table may not have been created successfully."));
+          Serial.println("WARNING: Errors were encountered during the init spare table operation. The spare table may not have been created successfully.");
           Serial.println();
         }
         else{
           Serial.println();
           Serial.println();
           setLEDColor(0, 1);
-          Serial.println(F("Spare table initialization complete!"));
+          Serial.println("Spare table initialization complete!");
         }
-        Serial.print(F("Number of bad sectors within the spare table (cylinder 4D) found during spare table initialization: "));
+        Serial.print("Number of bad sectors within the spare table (cylinder 4D) found during spare table initialization: ");
         printDataNoSpace(driveStatus[3]);
         Serial.println();
         Serial.println();
-        Serial.println(F("List of these bad sectors:"));
+        Serial.println("List of these bad sectors:");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.println(F("Data Interpretation:"));
+        Serial.println("Data Interpretation:");
         if(driveStatus[3] == 0){
-          Serial.println(F("No bad sectors found!"));
+          Serial.println("No bad sectors found!");
         }
         else{
           for(int i = 0; i < driveStatus[3]; i++){
-            Serial.print(F("Sector "));
+            Serial.print("Sector ");
             printDataNoSpace(blockDataBuffer[i] & 0x0F);
-            Serial.print(F(" on head "));
+            Serial.print(" on head ");
             printDataNoSpace(blockDataBuffer[i] >> 4);
-            Serial.println(F(" is bad."));
+            Serial.println(" is bad.");
           }
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4257,8 +4262,8 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("C") and testMenu == false and diagMenu == true and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false and widgetMenu == false){ //Disable Stepper
         clearScreen();
         setLEDColor(0, 0);
-        Serial.println(F("Disabling the head stepper motor..."));
-        Serial.println(F("Command: 10 00 00 00 0A 03"));
+        Serial.println("Disabling the head stepper motor...");
+        Serial.println("Command: 10 00 00 00 0A 03");
         byte oldDriveData[1064];
         for(int i = 0; i < 532; i++){
           oldDriveData[i] = blockDataBuffer[i];
@@ -4270,17 +4275,17 @@ void diagLoop() {
         if(readSuccess == 0){
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered while disabling the stepper motor. The motor might still be engaged."));
+          Serial.println("WARNING: Errors were encountered while disabling the stepper motor. The motor might still be engaged.");
           Serial.println();
         }
         else{
           Serial.println();
           setLEDColor(0, 1);
-          Serial.println(F("Stepper has been disabled!"));
+          Serial.println("Stepper has been disabled!");
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4295,13 +4300,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -4311,15 +4316,15 @@ void diagLoop() {
         commandBufferTenMegDiag[1] = 0x00;
         calcChecksum();
         Serial.println();
-        Serial.print(F("Reading cylinder "));
+        Serial.print("Reading cylinder ");
         printDataNoSpace(commandBufferTenMegDiag[2]);
         printDataNoSpace(commandBufferTenMegDiag[3]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(commandBufferTenMegDiag[4]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(commandBufferTenMegDiag[5]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: "));
+        Serial.println("...");
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -4327,7 +4332,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = tenMegDiagRead();
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -4337,7 +4342,7 @@ void diagLoop() {
         printRawData();
         Serial.println();
         printStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4347,13 +4352,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to write to in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to write to in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to write to in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to write to in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -4363,15 +4368,15 @@ void diagLoop() {
         commandBufferTenMegDiag[1] = 0x01;
         calcChecksum();
         Serial.println();
-        Serial.print(F("Writing the buffer to cylinder "));
+        Serial.print("Writing the buffer to cylinder ");
         printDataNoSpace(commandBufferTenMegDiag[2]);
         printDataNoSpace(commandBufferTenMegDiag[3]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(commandBufferTenMegDiag[4]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(commandBufferTenMegDiag[5]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: "));
+        Serial.println("...");
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -4379,7 +4384,7 @@ void diagLoop() {
         Serial.println();
         bool writeSuccess = tenMegDiagWrite();
         if(writeSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly."));
+          Serial.println("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -4387,7 +4392,7 @@ void diagLoop() {
           setLEDColor(0, 1);
         }
         printStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4398,13 +4403,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly read from in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -4415,32 +4420,32 @@ void diagLoop() {
         calcChecksum();
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly reading cylinder "));
+          Serial.print("Repeatedly reading cylinder ");
           printDataNoSpace(commandBufferTenMegDiag[2]);
           printDataNoSpace(commandBufferTenMegDiag[3]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(commandBufferTenMegDiag[4]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(commandBufferTenMegDiag[5]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           tenMegDiagRead();
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error reading on pass "));
+            Serial.print("Error reading on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -4456,9 +4461,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated read test terminated."));
+        Serial.println("Repeated read test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4469,13 +4474,13 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         uint32_t passCount = 1;
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to repeatedly write to in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -4486,32 +4491,32 @@ void diagLoop() {
         calcChecksum();
         Serial.println();
         while(!Serial.available()){
-          Serial.print(F("Repeatedly writing cylinder "));
+          Serial.print("Repeatedly writing cylinder ");
           printDataNoSpace(commandBufferTenMegDiag[2]);
           printDataNoSpace(commandBufferTenMegDiag[3]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(commandBufferTenMegDiag[4]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(commandBufferTenMegDiag[5]);
-          Serial.print(F(" - Pass "));
+          Serial.print(" - Pass ");
           printDataNoSpace(passCount >> 24);
           printDataNoSpace(passCount >> 16);
           printDataNoSpace(passCount >> 8);
           printDataNoSpace(passCount);
-          Serial.print(F("..."));
+          Serial.print("...");
           Serial.write("\033[1000D");
           tenMegDiagWrite();
           if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
             setLEDColor(1, 0);
             Serial.println();
             Serial.println();
-            Serial.print(F("Error writing on pass "));
+            Serial.print("Error writing on pass ");
             printDataNoSpace(passCount >> 24);
             printDataNoSpace(passCount >> 16);
             printDataNoSpace(passCount >> 8);
             printDataNoSpace(passCount);
-            Serial.println(F("!"));
-            Serial.println(F("Status Interpretation:"));
+            Serial.println("!");
+            Serial.println("Status Interpretation:");
             for(int k = 0; k < 3; k++){
               for(int l = 0; l < 8; l++){
                 if(bitRead(driveStatus[k], l) == 1){
@@ -4527,9 +4532,9 @@ void diagLoop() {
         flushInput();
         Serial.println();
         Serial.println();
-        Serial.println(F("Repeated write test terminated."));
+        Serial.println("Repeated write test terminated.");
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4539,14 +4544,14 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.println(F("Note: If you plan to format the cylinder that you're seeking to, you must use a sector of 00 or else the format will fail!"));
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: "));
+        Serial.println("Note: If you plan to format the cylinder that you're seeking to, you must use a sector of 00 or else the format will fail!");
+        Serial.print("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -4556,15 +4561,15 @@ void diagLoop() {
         commandBufferTenMegDiag[1] = 0x03;
         calcChecksum();
         Serial.println();
-        Serial.print(F("Seeking to cylinder "));
+        Serial.print("Seeking to cylinder ");
         printDataNoSpace(commandBufferTenMegDiag[2]);
         printDataNoSpace(commandBufferTenMegDiag[3]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(commandBufferTenMegDiag[4]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(commandBufferTenMegDiag[5]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: "));
+        Serial.println("...");
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -4572,7 +4577,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = tenMegDiagRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the seek operation. The heads may not be positioned over the desired track."));
+          Serial.println("WARNING: Errors were encountered during the seek operation. The heads may not be positioned over the desired track.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -4580,7 +4585,7 @@ void diagLoop() {
           setLEDColor(0, 1);
         }
         printStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4594,7 +4599,7 @@ void diagLoop() {
         confirm();
         if(confirmOperation == true){
           int prevErrorCount = 0;
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -4609,7 +4614,7 @@ void diagLoop() {
               printDataNoSpace(currentHead);
               Serial.print(" of 03. Progress: ");
               Serial.print(((float)currentCylinder/0x0131)*100);
-              Serial.print(F("%"));
+              Serial.print("%");
               Serial.write("\033[1000D");
               commandBufferTenMegDiag[0] = 0x06;
               commandBufferTenMegDiag[1] = 0x03;
@@ -4635,15 +4640,15 @@ void diagLoop() {
           }
           Serial.println();
           Serial.println();
-          Serial.print(F("Number of seek errors during the format procedure: "));
+          Serial.print("Number of seek errors during the format procedure: ");
           printDataNoSpace(seekErrors >> 8);
           printDataNoSpace(seekErrors);
           Serial.println();
-          Serial.print(F("Number of bad blocks found during the format procedure: "));
+          Serial.print("Number of bad blocks found during the format procedure: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.print(F("Remove jumper and press return to continue..."));
+          Serial.print("Remove jumper and press return to continue...");
           flushInput();
           while(!Serial.available());
           Serial.println();
@@ -4754,11 +4759,11 @@ void diagLoop() {
             Serial.println();
           }
           Serial.println();
-          Serial.print(F("Number of communications errors: "));
+          Serial.print("Number of communications errors: ");
           printDataNoSpace(commErrors >> 8);
           printDataNoSpace(commErrors);
           Serial.println();
-          Serial.print(F("Number of tests that failed the integrity check: "));
+          Serial.print("Number of tests that failed the integrity check: ");
           printDataNoSpace(spareValidationErrors >> 8);
           printDataNoSpace(spareValidationErrors);
           Serial.println();
@@ -4767,7 +4772,7 @@ void diagLoop() {
           commandBufferTenMegDiag[0] = 0x02;
           commandBufferTenMegDiag[1] = 0x05;
           calcChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferTenMegDiag[i]);
           }
@@ -4776,19 +4781,19 @@ void diagLoop() {
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered while creating the spare table. The table may not have may not have been created successfully."));
+            Serial.println("WARNING: Errors were encountered while creating the spare table. The table may not have may not have been created successfully.");
             Serial.println();
           }
           Serial.println();
-          Serial.print(F("Number of bad sectors within the spare table (cylinder 0099) found during spare table initialization: "));
+          Serial.print("Number of bad sectors within the spare table (cylinder 0099) found during spare table initialization: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.println(F("Step 4 - Performing a surface scan..."));
+          Serial.println("Step 4 - Performing a surface scan...");
           commandBufferTenMegDiag[0] = 0x02;
           commandBufferTenMegDiag[1] = 0x02;
           calcChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferTenMegDiag[i]);
           }
@@ -4797,15 +4802,15 @@ void diagLoop() {
           if(readSuccess == 0){
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully."));
+            Serial.println("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully.");
             Serial.println();
           }
           Serial.println();
-          Serial.print(F("Number of bad blocks found during the surface scan: "));
+          Serial.print("Number of bad blocks found during the surface scan: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.println(F("Step 5 - Parking the drive's heads..."));
+          Serial.println("Step 5 - Parking the drive's heads...");
           commandBufferTenMegDiag[0] = 0x06;
           commandBufferTenMegDiag[1] = 0x03;
           commandBufferTenMegDiag[2] = 0x00;
@@ -4817,18 +4822,18 @@ void diagLoop() {
           commandBufferTenMegDiag[0] = 0x02;
           commandBufferTenMegDiag[1] = 0x0C;
           calcChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferTenMegDiag[i]);
           }
           Serial.println();
           Serial.println();
           tenMegDiagRead(false, true);
-          Serial.println(F("Low-level format finished! "));
+          Serial.println("Low-level format finished! ");
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -4838,7 +4843,7 @@ void diagLoop() {
       clearScreen();
       clearScreen();
       bool formatAllTracks = false;
-        Serial.print(F("Do you want to just format the current track or all tracks on the disk (return for current track, 'a' for all tracks)? "));
+        Serial.print("Do you want to just format the current track or all tracks on the disk (return for current track, 'a' for all tracks)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -4855,7 +4860,7 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to just format the current track or all tracks on the disk (return for current track, 'a' for all tracks)? "));
+              Serial.print("Do you want to just format the current track or all tracks on the disk (return for current track, 'a' for all tracks)? ");
             }
           }
         }
@@ -4864,7 +4869,7 @@ void diagLoop() {
           commandBufferTenMegDiag[0] = 0x02;
           commandBufferTenMegDiag[1] = 0x04;
           calcChecksum();
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -4880,39 +4885,39 @@ void diagLoop() {
           if(readSuccess == 0){
             setLEDColor(1, 0);
             Serial.println();
-            Serial.println(F("WARNING: Errors were encountered while formatting the track. The format may not have completed successfully. You can remove the jumper now."));
+            Serial.println("WARNING: Errors were encountered while formatting the track. The format may not have completed successfully. You can remove the jumper now.");
             Serial.println();
           }
           else{
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Format complete! You can remove the jumper now."));
+            Serial.println("Format complete! You can remove the jumper now.");
           }
-          Serial.print(F("Number of bad blocks found while formatting: "));
+          Serial.print("Number of bad blocks found while formatting: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.println(F("List of these bad blocks:"));
+          Serial.println("List of these bad blocks:");
           Serial.println();
           printRawData();
           Serial.println();
-          Serial.println(F("Data Interpretation:"));
+          Serial.println("Data Interpretation:");
           if(blockDataBuffer[0] == 0xFF and blockDataBuffer[1] == 0xFF and blockDataBuffer[2] == 0xFF and blockDataBuffer[3] == 0xFF){
-            Serial.println(F("No bad blocks found!"));
+            Serial.println("No bad blocks found!");
           }
           else{
             for(int i = 0; i < 532; i += 4){
               if((blockDataBuffer[i] == 0xFF and blockDataBuffer[i + 1] == 0xFF and blockDataBuffer[i + 2] == 0xFF and blockDataBuffer[i + 3] == 0xFF) or (i > driveStatus[3] * 4)){
                 break;
               }
-              Serial.print(F("Bad block on cylinder "));
+              Serial.print("Bad block on cylinder ");
               printDataNoSpace(blockDataBuffer[i]);
               printDataNoSpace(blockDataBuffer[i + 1]);
-              Serial.print(F(", head "));
+              Serial.print(", head ");
               printDataNoSpace((blockDataBuffer[i + 2] & 0xF0) >> 4);
-              Serial.print(F(", and sector "));
+              Serial.print(", and sector ");
               printDataNoSpace(blockDataBuffer[i + 2] & 0x0F);
-              Serial.print(F(" (AKA block "));
+              Serial.print(" (AKA block ");
               uint32_t LBA = 0;
               uint16_t completeCylinder = blockDataBuffer[i];
               completeCylinder = completeCylinder << 8;
@@ -4930,19 +4935,19 @@ void diagLoop() {
                 printDataNoSpace(LBA);
               }
               else{
-                Serial.print(F("SPARE TABLE"));
+                Serial.print("SPARE TABLE");
               }
-              Serial.print(F("). Reason for block being bad: "));
+              Serial.print("). Reason for block being bad: ");
               bool statusGood = 1;
               for(int j = 0; j < 8; j++){
                 if(bitRead(blockDataBuffer[i + 3], j) == 1){
                   statusGood = 0;
                   Serial.print(statusMessages[2][j]);
-                  Serial.print(F(" "));
+                  Serial.print(" ");
                 }
               }
               if(statusGood == 1){
-                Serial.println(F("Unknown"));
+                Serial.println("Unknown");
               }
               else{
                 Serial.println();
@@ -4955,7 +4960,7 @@ void diagLoop() {
           bool abort = false;
           if(confirmOperation == true){
             int prevErrorCount = 0;
-            Serial.print(F("Install jumper and press return to continue..."));
+            Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
             flushInput();
             while(!Serial.available());
             flushInput();
@@ -4973,7 +4978,7 @@ void diagLoop() {
                 printDataNoSpace(currentHead);
                 Serial.print(" of 03. Progress: ");
                 Serial.print(((float)currentCylinder/0x0131)*100);
-                Serial.print(F("%"));
+                Serial.print("%");
                 Serial.write("\033[1000D");
                 commandBufferTenMegDiag[0] = 0x06;
                 commandBufferTenMegDiag[1] = 0x03;
@@ -4986,13 +4991,13 @@ void diagLoop() {
                 if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
                   Serial.println();
                   Serial.println();
-                  Serial.print(F("Error seeking to cylinder "));
+                  Serial.print("Error seeking to cylinder ");
                   printDataNoSpace(currentCylinder >> 8);
                   printDataNoSpace(currentCylinder);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -5019,9 +5024,9 @@ void diagLoop() {
                   Serial.print("Error while formatting cylinder ");
                   printDataNoSpace(currentCylinder >> 8);
                   printDataNoSpace(currentCylinder);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
+                  Serial.println("!");
                   Serial.println();
                 }
               }
@@ -5029,37 +5034,37 @@ void diagLoop() {
             Serial.println();
             Serial.println();
             if(abort == false){
-              Serial.println(F("Format complete! You can remove the jumper now."));
+              Serial.println("Format complete! You can remove the jumper now.");
             }
             else{
-              Serial.println(F("Format terminated by keypress. You can remove the jumper now."));
+              Serial.println("Format terminated by keypress. You can remove the jumper now.");
               Serial.println();
             }
-            Serial.print(F("Number of bad blocks found while formatting: "));
+            Serial.print("Number of bad blocks found while formatting: ");
             printDataNoSpace(driveStatus[3]);
             Serial.println();
             Serial.println();
-            Serial.println(F("List of these bad blocks:"));
+            Serial.println("List of these bad blocks:");
             Serial.println();
             printRawData();
             Serial.println();
-            Serial.println(F("Data Interpretation:"));
+            Serial.println("Data Interpretation:");
             if(blockDataBuffer[0] == 0xFF and blockDataBuffer[1] == 0xFF and blockDataBuffer[2] == 0xFF and blockDataBuffer[3] == 0xFF){
-              Serial.println(F("No bad blocks found!"));
+              Serial.println("No bad blocks found!");
             }
             else{
               for(int i = 0; i < 532; i += 4){
                 if((blockDataBuffer[i] == 0xFF and blockDataBuffer[i + 1] == 0xFF and blockDataBuffer[i + 2] == 0xFF and blockDataBuffer[i + 3] == 0xFF) or (i > driveStatus[3] * 4)){
                   break;
                 }
-                Serial.print(F("Bad block on cylinder "));
+                Serial.print("Bad block on cylinder ");
                 printDataNoSpace(blockDataBuffer[i]);
                 printDataNoSpace(blockDataBuffer[i + 1]);
-                Serial.print(F(", head "));
+                Serial.print(", head ");
                 printDataNoSpace((blockDataBuffer[i + 2] & 0xF0) >> 4);
-                Serial.print(F(", and sector "));
+                Serial.print(", and sector ");
                 printDataNoSpace(blockDataBuffer[i + 2] & 0x0F);
-                Serial.print(F(" (AKA block "));
+                Serial.print(" (AKA block ");
                 uint32_t LBA = 0;
                 uint16_t completeCylinder = blockDataBuffer[i];
                 completeCylinder = completeCylinder << 8;
@@ -5077,19 +5082,19 @@ void diagLoop() {
                   printDataNoSpace(LBA);
                 }
                 else{
-                  Serial.print(F("SPARE TABLE"));
+                  Serial.print("SPARE TABLE");
                 }
-                Serial.print(F("). Reason for block being bad: "));
+                Serial.print("). Reason for block being bad: ");
                 bool statusGood = 1;
                 for(int j = 0; j < 8; j++){
                   if(bitRead(blockDataBuffer[i + 3], j) == 1){
                     statusGood = 0;
                     Serial.print(statusMessages[2][j]);
-                    Serial.print(F(" "));
+                    Serial.print(" ");
                   }
                 }
                 if(statusGood == 1){
-                  Serial.println(F("Unknown"));
+                  Serial.println("Unknown");
                 }
                 else{
                   Serial.println();
@@ -5099,7 +5104,7 @@ void diagLoop() {
           }
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5108,11 +5113,11 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("8") and testMenu == false and diagMenu == false and diagMenuTenMeg == true and widgetMenu == false){ //Scan
         clearScreen();
         setLEDColor(0, 0);
-        Serial.println(F("Performing a surface scan on the drive..."));
+        Serial.println("Performing a surface scan on the drive...");
         commandBufferTenMegDiag[0] = 0x02;
         commandBufferTenMegDiag[1] = 0x02;
         calcChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -5121,39 +5126,39 @@ void diagLoop() {
         if(readSuccess == 0){
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully."));
+          Serial.println("WARNING: Errors were encountered during the surface scan operation. The scan may not have completed successfully.");
           Serial.println();
         }
         else{
           setLEDColor(0, 1);
           Serial.println();
-          Serial.println(F("Surface scan complete!"));
+          Serial.println("Surface scan complete!");
         }
-        Serial.print(F("Number of bad blocks found during the scan: "));
+        Serial.print("Number of bad blocks found during the scan: ");
         printDataNoSpace(driveStatus[3]);
         Serial.println();
         Serial.println();
-        Serial.println(F("List of these bad blocks:"));
+        Serial.println("List of these bad blocks:");
         Serial.println();
         printRawData();
         Serial.println();
-        Serial.println(F("Data Interpretation:"));
+        Serial.println("Data Interpretation:");
         if(blockDataBuffer[0] == 0xFF and blockDataBuffer[1] == 0xFF and blockDataBuffer[2] == 0xFF and blockDataBuffer[3] == 0xFF){
-          Serial.println(F("No bad blocks found!"));
+          Serial.println("No bad blocks found!");
         }
         else{
           for(int i = 0; i < 532; i += 4){
             if((blockDataBuffer[i] == 0xFF and blockDataBuffer[i + 1] == 0xFF and blockDataBuffer[i + 2] == 0xFF and blockDataBuffer[i + 3] == 0xFF) or (i > driveStatus[3] * 4)){
               break;
             }
-            Serial.print(F("Bad block on cylinder "));
+            Serial.print("Bad block on cylinder ");
             printDataNoSpace(blockDataBuffer[i]);
             printDataNoSpace(blockDataBuffer[i + 1]);
-            Serial.print(F(", head "));
+            Serial.print(", head ");
             printDataNoSpace((blockDataBuffer[i + 2] & 0xF0) >> 4);
-            Serial.print(F(", and sector "));
+            Serial.print(", and sector ");
             printDataNoSpace(blockDataBuffer[i + 2] & 0x0F);
-            Serial.print(F(" (AKA block "));
+            Serial.print(" (AKA block ");
             uint32_t LBA = 0;
             uint16_t completeCylinder = blockDataBuffer[i];
             completeCylinder = completeCylinder << 8;
@@ -5171,19 +5176,19 @@ void diagLoop() {
               printDataNoSpace(LBA);
             }
             else{
-              Serial.print(F("SPARE TABLE"));
+              Serial.print("SPARE TABLE");
             }
-            Serial.print(F("). Reason for block being bad: "));
+            Serial.print("). Reason for block being bad: ");
             bool statusGood = 1;
             for(int j = 0; j < 8; j++){
               if(bitRead(blockDataBuffer[i + 3], j) == 1){
                 statusGood = 0;
                 Serial.print(statusMessages[2][j]);
-                Serial.print(F(" "));
+                Serial.print(" ");
               }
             }
             if(statusGood == 1){
-              Serial.println(F("Unknown"));
+              Serial.println("Unknown");
             }
             else{
               Serial.println();
@@ -5192,7 +5197,7 @@ void diagLoop() {
         }
         Serial.println();
         setLEDColor(0, 1);
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5201,7 +5206,7 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         bool checkSectors = true;
-        Serial.print(F("Do you want to check the integrity of the spare table sectors before attempting to initialize the spare table (return for yes, 'n' for no)? "));
+        Serial.print("Do you want to check the integrity of the spare table sectors before attempting to initialize the spare table (return for yes, 'n' for no)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -5218,7 +5223,7 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to check the integrity of the spare table sectors before attempting to initialize the spare table (return for yes, 'n' for no)? "));
+              Serial.print("Do you want to check the integrity of the spare table sectors before attempting to initialize the spare table (return for yes, 'n' for no)? ");
             }
           }
         }
@@ -5305,13 +5310,13 @@ void diagLoop() {
                 if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
                   Serial.println();
                   Serial.println();
-                  Serial.print(F("Error writing to sector "));
+                  Serial.print("Error writing to sector ");
                   failure = true;
                   printDataNoSpace(currentSector);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -5334,12 +5339,12 @@ void diagLoop() {
                   Serial.println();
                   Serial.println();
                   failure = true;
-                  Serial.print(F("Error rereading sector "));
+                  Serial.print("Error rereading sector ");
                   printDataNoSpace(currentSector);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -5376,12 +5381,12 @@ void diagLoop() {
         }
         if(checkSectors == true and failure == false){
           Serial.println();
-          Serial.println(F("Integrity check passed!"));
+          Serial.println("Integrity check passed!");
           Serial.println();
         }
         if(failure == true){
           Serial.println();
-          Serial.print(F("Errors were encountered while validating the spare table sectors. The spare table initialization process cannot continue. To bypass this warning, run the command again without choosing to verify the integrity of the sectors."));
+          Serial.print("Errors were encountered while validating the spare table sectors. The spare table initialization process cannot continue. To bypass this warning, run the command again without choosing to verify the integrity of the sectors.");
           Serial.println();
         }
         else{
@@ -5398,39 +5403,39 @@ void diagLoop() {
             Serial.println();
             Serial.println();
             setLEDColor(1, 0);
-            Serial.println(F("WARNING: Errors were encountered during the init spare table operation. The spare table may not have been created successfully."));
+            Serial.println("WARNING: Errors were encountered during the init spare table operation. The spare table may not have been created successfully.");
             Serial.println();
           }
           else{
             Serial.println();
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Spare table initialization complete!"));
+            Serial.println("Spare table initialization complete!");
           }
-          Serial.print(F("Number of bad sectors within the spare table (cylinder 0099) found during spare table initialization: "));
+          Serial.print("Number of bad sectors within the spare table (cylinder 0099) found during spare table initialization: ");
           printDataNoSpace(driveStatus[3]);
           Serial.println();
           Serial.println();
-          Serial.println(F("List of these bad sectors:"));
+          Serial.println("List of these bad sectors:");
           Serial.println();
           printRawData();
           Serial.println();
-          Serial.println(F("Data Interpretation:"));
+          Serial.println("Data Interpretation:");
           if(driveStatus[3] == 0){
-            Serial.println(F("No bad sectors found!"));
+            Serial.println("No bad sectors found!");
           }
           else{
             for(int i = 0; i < driveStatus[3]; i++){
-              Serial.print(F("Sector "));
+              Serial.print("Sector ");
               printDataNoSpace(blockDataBuffer[i] & 0x0F);
-              Serial.print(F(" on head "));
+              Serial.print(" on head ");
               printDataNoSpace(blockDataBuffer[i] >> 4);
-              Serial.println(F(" is bad."));
+              Serial.println(" is bad.");
             }
           }
           Serial.println();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5452,30 +5457,30 @@ void diagLoop() {
         if(readSuccess == 0){
           Serial.println();
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered while testing the drive's RAM. The following pass/fail information may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while testing the drive's RAM. The following pass/fail information may be incorrect.");
           Serial.println();
         }
         if(driveStatus[0] == 0){
           Serial.println();
-          Serial.println(F("RAM test passed!"));
+          Serial.println("RAM test passed!");
         }
         else{
           Serial.println();
-          Serial.print(F("RAM test failed at address"));
+          Serial.print("RAM test failed at address ");
           printDataNoSpace(blockDataBuffer[0]);
           printDataNoSpace(blockDataBuffer[1]);
-          Serial.print(F(" with the test pattern "));
+          Serial.print(" with the test pattern ");
           printDataNoSpace(blockDataBuffer[2]);
-          Serial.print(F(", which was incorrectly read back as "));
+          Serial.print(", which was incorrectly read back as ");
           printDataNoSpace(blockDataBuffer[3]);
-          Serial.print(F("."));
+          Serial.print(".");
           Serial.println();
           Serial.println();
-          Serial.println(F("Raw error data:"));
+          Serial.println("Raw error data:");
           printRawData();
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5489,13 +5494,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS: ");
           }
         }
         for(int i = 0; i < 4; i++){
@@ -5504,14 +5509,14 @@ void diagLoop() {
         commandBufferTenMegDiag[0] = 0x06;
         commandBufferTenMegDiag[1] = 0x07;
         Serial.println();
-        Serial.print(F("Reading the header from cylinder "));
+        Serial.print("Reading the header from cylinder ");
         printDataNoSpace(commandBufferTenMegDiag[2]);
         printDataNoSpace(commandBufferTenMegDiag[3]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(commandBufferTenMegDiag[4]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(commandBufferTenMegDiag[5]);
-        Serial.println(F("..."));
+        Serial.println("...");
         commandBufferTenMegDiag[5] = 0;
         for(int i = 0; i < 16; i++){
           if(tenMegInterleaveTable[serialBytes[2]][i] == serialBytes[3]){
@@ -5523,7 +5528,7 @@ void diagLoop() {
           }
         }
         calcChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -5531,7 +5536,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = tenMegDiagRead();
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while reading the header. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while reading the header. The following data may be incorrect.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -5539,81 +5544,81 @@ void diagLoop() {
           setLEDColor(0, 1);
         }
         bool headerGood = true;
-        Serial.print(F("Header Contents: "));
+        Serial.print("Header Contents: ");
         for(int i = 0; i < 0x14; i++){
           printDataSpace(blockDataBuffer[i]);
         }
         Serial.println();
         Serial.println();
-        Serial.println(F("Header Analysis: "));
-        Serial.print(F("Starting Fence: "));
+        Serial.println("Header Analysis: ");
+        Serial.print("Starting Fence: ");
         printDataSpace(blockDataBuffer[0]);
         printDataSpace(blockDataBuffer[1]);
         /*if((blockDataBuffer[0] != 0xD2) or (blockDataBuffer[1] != 0x00)){
           headerGood = false;
-          Serial.print(F("- Fence is incorrect; should be D2 00!"));
+          Serial.print("- Fence is incorrect; should be D2 00!");
         }*/
         Serial.println();
-        Serial.print(F("Cylinder: "));
+        Serial.print("Cylinder: ");
         printDataNoSpace(blockDataBuffer[2]);
         printDataNoSpace(blockDataBuffer[3]);
         if((blockDataBuffer[2] != serialBytes[0]) or (blockDataBuffer[3] != serialBytes[1])){
           headerGood = false;
-          Serial.print(F(" - Cylinder number doesn't match!"));
+          Serial.print(" - Cylinder number doesn't match!");
         }
         Serial.println();
-        Serial.print(F("Head: "));
+        Serial.print("Head: ");
         printDataNoSpace(blockDataBuffer[4]);
         if(blockDataBuffer[4] != serialBytes[2]){
           headerGood = false;
-          Serial.print(F(" - Head number doesn't match!"));
+          Serial.print(" - Head number doesn't match!");
         }
         Serial.println();
-        Serial.print(F("Sector: "));
+        Serial.print("Sector: ");
         printDataNoSpace(blockDataBuffer[5]);
         if(blockDataBuffer[5] != serialBytes[3]){
           headerGood = false;
-          Serial.print(F(" - Sector number doesn't match!"));
+          Serial.print(" - Sector number doesn't match!");
         }
         Serial.println();
-        Serial.print(F("/Cylinder: "));
+        Serial.print("/Cylinder: ");
         byte notHighCylinder = ~blockDataBuffer[2];
         byte notLowCylinder = ~blockDataBuffer[3];
         printDataNoSpace(blockDataBuffer[6]);
         printDataNoSpace(blockDataBuffer[7]);
         if(blockDataBuffer[6] != notHighCylinder){
           headerGood = false;
-          Serial.print(F(" - Inverted cylinder doesn't match regular cylinder number; should be "));
+          Serial.print(" - Inverted cylinder doesn't match regular cylinder number; should be ");
           printDataNoSpace(~blockDataBuffer[2]);
           printDataNoSpace(~blockDataBuffer[3]);
         }
         else if(blockDataBuffer[7] != notLowCylinder){
           headerGood = false;
-          Serial.print(F(" - Inverted cylinder doesn't match regular cylinder number; should be "));
+          Serial.print(" - Inverted cylinder doesn't match regular cylinder number; should be ");
           printDataNoSpace(~blockDataBuffer[2]);
           printDataNoSpace(~blockDataBuffer[3]);
         }
         Serial.println();
-        Serial.print(F("/Head: "));
+        Serial.print("/Head: ");
         byte notHead = ~blockDataBuffer[4];
         printDataNoSpace(blockDataBuffer[8]);
         if(notHead != blockDataBuffer[8]){
           headerGood = false;
-          Serial.print(F(" - Inverted head doesn't match regular head number; should be "));
+          Serial.print(" - Inverted head doesn't match regular head number; should be ");
           printDataNoSpace(~blockDataBuffer[4]);
         }
         Serial.println();
-        Serial.print(F("/Sector: "));
+        Serial.print("/Sector: ");
         byte notSector = ~blockDataBuffer[5];
         printDataNoSpace(blockDataBuffer[9]);
         if(notSector != blockDataBuffer[9]){
           headerGood = false;
-          Serial.print(F(" - Inverted sector doesn't match regular sector number; should be "));
+          Serial.print(" - Inverted sector doesn't match regular sector number; should be ");
           printDataNoSpace(~blockDataBuffer[5]);
         }
 
         Serial.println();
-        Serial.print(F("Gap: "));
+        Serial.print("Gap: ");
         for(int i = 0; i < 6; i++){
           printDataSpace(blockDataBuffer[i + 0x0A]);
         }
@@ -5625,29 +5630,29 @@ void diagLoop() {
         }
         if(goodGap == false){
           headerGood = false;
-          Serial.print(F(" - Incorrect gap value - gap should be all zeros!"));
+          Serial.print(" - Incorrect gap value - gap should be all zeros!");
         }
         Serial.println();
-        Serial.print(F("Ending Fence: "));
+        Serial.print("Ending Fence: ");
         printDataSpace(blockDataBuffer[0x10]);
         printDataSpace(blockDataBuffer[0x11]);
         printDataSpace(blockDataBuffer[0x12]);
         printDataSpace(blockDataBuffer[0x13]);
         /*if((blockDataBuffer[0x10] != 0x31) or (blockDataBuffer[0x11] != 0x30) or (blockDataBuffer[0x12] != 0x4D) or (blockDataBuffer[0x13] != 0x00)){
           headerGood = false;
-          Serial.print(F("- Fence is incorrect; should be 31 30 4D 00!"));
+          Serial.print("- Fence is incorrect; should be 31 30 4D 00!");
         }*/
         Serial.println();
         if(headerGood == true){
-          Serial.print(F("Header integrity looks good!"));
+          Serial.print("Header integrity looks good!");
         }
         else{
-          Serial.print(F("Header seems to be invalid!"));
+          Serial.print("Header seems to be invalid!");
         }
         Serial.println();
         Serial.println();
         printStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5658,7 +5663,7 @@ void diagLoop() {
         clearScreen();
         bool abort = false;
         bool eraseAllTracks = false;
-        Serial.print(F("Do you want to just erase one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+        Serial.print("Do you want to just erase one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -5675,19 +5680,19 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to just erase one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+              Serial.print("Do you want to just erase one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
             }
           }
         }
         Serial.println();
         if(eraseAllTracks == false){
-          Serial.print(F("Please enter the cylinder and head that you want to erase in the format (CC)CCHH: "));
+          Serial.print("Please enter the cylinder and head that you want to erase in the format (CC)CCHH: ");
           while(1){
             if(readSerialValue(6) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter the cylinder and head that you want to erase in the format (CC)CCHH: "));
+              Serial.print("Please enter the cylinder and head that you want to erase in the format (CC)CCHH: ");
             }
           }
           for(int i = 0; i < 3; i++){
@@ -5696,7 +5701,7 @@ void diagLoop() {
           commandBufferTenMegDiag[0] = 0x05;
           commandBufferTenMegDiag[1] = 0x08;
           calcChecksum();
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -5717,13 +5722,13 @@ void diagLoop() {
           if(readSuccess == 0){
             setLEDColor(1, 0);
             Serial.println();
-            Serial.println(F("WARNING: Errors were encountered while erasing the track. The erase may not have completed successfully. You can remove the jumper now."));
+            Serial.println("WARNING: Errors were encountered while erasing the track. The erase may not have completed successfully. You can remove the jumper now.");
             Serial.println();
           }
           else{
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Erase complete! You can remove the jumper now."));
+            Serial.println("Erase complete! You can remove the jumper now.");
           }
           Serial.println();
           printStatus();
@@ -5731,7 +5736,7 @@ void diagLoop() {
         else{
           confirm();
           if(confirmOperation == true){
-            Serial.print(F("Install jumper and press return to continue..."));
+            Serial.print("Install jumper at P7 on the ProFile digital board and press return to continue...");
             flushInput();
             while(!Serial.available());
             flushInput();
@@ -5749,7 +5754,7 @@ void diagLoop() {
                 printDataNoSpace(currentHead);
                 Serial.print(" of 03. Progress: ");
                 Serial.print(((float)currentCylinder/0x0131)*100);
-                Serial.print(F("%"));
+                Serial.print("%");
                 Serial.write("\033[1000D");
                 commandBufferTenMegDiag[0] = 0x05;
                 commandBufferTenMegDiag[1] = 0x08;
@@ -5761,13 +5766,13 @@ void diagLoop() {
                 if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
                   Serial.println();
                   Serial.println();
-                  Serial.print(F("Error erasing cylinder "));
+                  Serial.print("Error erasing cylinder ");
                   printDataNoSpace(currentCylinder >> 8);
                   printDataNoSpace(currentCylinder);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -5782,11 +5787,11 @@ void diagLoop() {
             }
             Serial.println();
             if(abort == false){
-              Serial.println(F("Erase complete! You can remove the jumper now."));
+              Serial.println("Erase complete! You can remove the jumper now.");
             }
             else{
               Serial.println();
-              Serial.println(F("Erase terminated by keypress. You can remove the jumper now."));
+              Serial.println("Erase terminated by keypress. You can remove the jumper now.");
             }
             Serial.println();
           }
@@ -5794,7 +5799,7 @@ void diagLoop() {
             Serial.println();
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5805,7 +5810,7 @@ void diagLoop() {
         clearScreen();
         bool abort = false;
         bool writeAllTracks = false;
-        Serial.print(F("Do you want to just write sector marks to one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+        Serial.print("Do you want to just write sector marks to one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -5822,19 +5827,19 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to just write sector marks to one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+              Serial.print("Do you want to just write sector marks to one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
             }
           }
         }
         Serial.println();
         if(writeAllTracks == false){
-          Serial.print(F("Please enter the cylinder and head that you want to write the sector marks to in the format (CC)CCHH: "));
+          Serial.print("Please enter the cylinder and head that you want to write the sector marks to in the format (CC)CCHH: ");
           while(1){
             if(readSerialValue(6) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter the cylinder and head that you want to write the sector marks to in the format (CC)CCHH: "));
+              Serial.print("Please enter the cylinder and head that you want to write the sector marks to in the format (CC)CCHH: ");
             }
           }
           for(int i = 0; i < 3; i++){
@@ -5845,7 +5850,7 @@ void diagLoop() {
           commandBufferTenMegDiag[5] = 0x00;
           commandBufferTenMegDiag[6] = 16;
           calcChecksum();
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -5866,13 +5871,13 @@ void diagLoop() {
           if(readSuccess == 0){
             setLEDColor(1, 0);
             Serial.println();
-            Serial.println(F("WARNING: Errors were encountered while writing sector marks to the track. The operation may not have completed successfully. You can remove the jumper now."));
+            Serial.println("WARNING: Errors were encountered while writing sector marks to the track. The operation may not have completed successfully. You can remove the jumper now.");
             Serial.println();
           }
           else{
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Writing sector marks complete! You can remove the jumper now."));
+            Serial.println("Writing sector marks complete! You can remove the jumper now.");
           }
           Serial.println();
           printStatus();
@@ -5880,7 +5885,7 @@ void diagLoop() {
         else{
           confirm();
           if(confirmOperation == true){
-            Serial.print(F("Install jumper and press return to continue..."));
+            Serial.print("Install jumper and press return to continue...");
             flushInput();
             while(!Serial.available());
             flushInput();
@@ -5898,7 +5903,7 @@ void diagLoop() {
                 printDataNoSpace(currentHead);
                 Serial.print(" of 03. Progress: ");
                 Serial.print(((float)currentCylinder/0x0131)*100);
-                Serial.print(F("%"));
+                Serial.print("%");
                 Serial.write("\033[1000D");
                 commandBufferTenMegDiag[0] = 0x07;
                 commandBufferTenMegDiag[1] = 0x09;
@@ -5912,13 +5917,13 @@ void diagLoop() {
                 if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
                   Serial.println();
                   Serial.println();
-                  Serial.print(F("Error writing sector marks to cylinder "));
+                  Serial.print("Error writing sector marks to cylinder ");
                   printDataNoSpace(currentCylinder >> 8);
                   printDataNoSpace(currentCylinder);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -5933,15 +5938,15 @@ void diagLoop() {
             }
             Serial.println();
             if(abort == false){
-              Serial.println(F("Writing sector marks complete! You can remove the jumper now."));
+              Serial.println("Writing sector marks complete! You can remove the jumper now.");
             }
             else{
               Serial.println();
-              Serial.println(F("Writing sector marks terminated by keypress. You can remove the jumper now."));
+              Serial.println("Writing sector marks terminated by keypress. You can remove the jumper now.");
             }
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -5952,7 +5957,7 @@ void diagLoop() {
         clearScreen();
         bool abort = false;
         bool writeAllTracks = false;
-        Serial.print(F("Do you want to just write headers to one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+        Serial.print("Do you want to just write headers to one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -5969,19 +5974,19 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to just write headers to one track or all tracks on the disk (return for one track, 'a' for all tracks)? "));
+              Serial.print("Do you want to just write headers to one track or all tracks on the disk (return for one track, 'a' for all tracks)? ");
             }
           }
         }
         Serial.println();
         if(writeAllTracks == false){
-          Serial.print(F("Please enter the cylinder and head that you want to write the headers to in the format (CC)CCHH: "));
+          Serial.print("Please enter the cylinder and head that you want to write the headers to in the format (CC)CCHH: ");
           while(1){
             if(readSerialValue(6) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter the cylinder and head that you want to write the headers to in the format (CC)CCHH: "));
+              Serial.print("Please enter the cylinder and head that you want to write the headers to in the format (CC)CCHH: ");
             }
           }
           for(int i = 0; i < 3; i++){
@@ -5992,7 +5997,7 @@ void diagLoop() {
           commandBufferTenMegDiag[5] = 0x00;
           commandBufferTenMegDiag[6] = 16;
           calcChecksum();
-          Serial.print(F("Install jumper and press return to continue..."));
+          Serial.print("Install jumper and press return to continue...");
           flushInput();
           while(!Serial.available());
           flushInput();
@@ -6013,13 +6018,13 @@ void diagLoop() {
           if(readSuccess == 0){
             setLEDColor(1, 0);
             Serial.println();
-            Serial.println(F("WARNING: Errors were encountered while writing headers to the track. The operation may not have completed successfully. You can remove the jumper now."));
+            Serial.println("WARNING: Errors were encountered while writing headers to the track. The operation may not have completed successfully. You can remove the jumper now.");
             Serial.println();
           }
           else{
             Serial.println();
             setLEDColor(0, 1);
-            Serial.println(F("Writing headers complete! You can remove the jumper now."));
+            Serial.println("Writing headers complete! You can remove the jumper now.");
           }
           Serial.println();
           printStatus();
@@ -6027,7 +6032,7 @@ void diagLoop() {
         else{
           confirm();
           if(confirmOperation == true){
-            Serial.print(F("Install jumper and press return to continue..."));
+            Serial.print("Install jumper and press return to continue...");
             flushInput();
             while(!Serial.available());
             flushInput();
@@ -6045,7 +6050,7 @@ void diagLoop() {
                 printDataNoSpace(currentHead);
                 Serial.print(" of 03. Progress: ");
                 Serial.print(((float)currentCylinder/0x0131)*100);
-                Serial.print(F("%"));
+                Serial.print("%");
                 Serial.write("\033[1000D");
                 commandBufferTenMegDiag[0] = 0x07;
                 commandBufferTenMegDiag[1] = 0x0A;
@@ -6059,13 +6064,13 @@ void diagLoop() {
                 if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0){ //Make it so that we go back up to the progress line after printing an error
                   Serial.println();
                   Serial.println();
-                  Serial.print(F("Error writing headers to cylinder "));
+                  Serial.print("Error writing headers to cylinder ");
                   printDataNoSpace(currentCylinder >> 8);
                   printDataNoSpace(currentCylinder);
-                  Serial.print(F(" on head "));
+                  Serial.print(" on head ");
                   printDataNoSpace(currentHead);
-                  Serial.println(F("!"));
-                  Serial.println(F("Status Interpretation:"));
+                  Serial.println("!");
+                  Serial.println("Status Interpretation:");
                   for(int k = 0; k < 3; k++){
                     for(int l = 0; l < 8; l++){
                       if(bitRead(driveStatus[k], l) == 1){
@@ -6080,15 +6085,15 @@ void diagLoop() {
             }
             Serial.println();
             if(abort == false){
-              Serial.println(F("Writing headers complete! You can remove the jumper now."));
+              Serial.println("Writing headers complete! You can remove the jumper now.");
             }
             else{
               Serial.println();
-              Serial.println(F("Writing headers terminated by keypress. You can remove the jumper now."));
+              Serial.println("Writing headers terminated by keypress. You can remove the jumper now.");
             }
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -6098,11 +6103,11 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.println(F("Reading the result table from the most recently-executed command..."));
+        Serial.println("Reading the result table from the most recently-executed command...");
         commandBufferTenMegDiag[0] = 0x02;
         commandBufferTenMegDiag[1] = 0x0D;
         calcChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -6110,7 +6115,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = tenMegDiagRead();
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while retrieving the result table. The table may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while retrieving the result table. The table may be incorrect.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -6120,7 +6125,7 @@ void diagLoop() {
         printRawData();
         Serial.println();
         printStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -6130,11 +6135,11 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.println(F("Disabling the head stepper motor..."));
+        Serial.println("Disabling the head stepper motor...");
         commandBufferTenMegDiag[0] = 0x02;
         commandBufferTenMegDiag[1] = 0x0B;
         calcChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -6143,15 +6148,15 @@ void diagLoop() {
         bool readSuccess = tenMegDiagRead(false, true);
         if(readSuccess == 0){
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered while disabling the stepper motor. The motor might still be engaged."));
+          Serial.println("WARNING: Errors were encountered while disabling the stepper motor. The motor might still be engaged.");
           Serial.println();
         }
         else{
           setLEDColor(0, 1);
-          Serial.println(F("Stepper has been disabled!"));
+          Serial.println("Stepper has been disabled!");
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -6161,7 +6166,7 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.println(F("Parking the drive's heads..."));
+        Serial.println("Parking the drive's heads...");
         commandBufferTenMegDiag[0] = 0x06;
         commandBufferTenMegDiag[1] = 0x03;
         commandBufferTenMegDiag[2] = 0x00;
@@ -6174,7 +6179,7 @@ void diagLoop() {
         commandBufferTenMegDiag[0] = 0x02;
         commandBufferTenMegDiag[1] = 0x0C;
         calcChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -6183,15 +6188,15 @@ void diagLoop() {
         bool readSuccess = tenMegDiagRead(false, true);
         if(readSuccess == 0){
           setLEDColor(1, 0);
-          Serial.println(F("WARNING: Errors were encountered while parking the heads. The heads may not have been parked correctly."));
+          Serial.println("WARNING: Errors were encountered while parking the heads. The heads may not have been parked correctly.");
           Serial.println();
         }
         else{
           setLEDColor(0, 1);
-          Serial.println(F("Heads have been parked!"));
+          Serial.println("Heads have been parked!");
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -6199,7 +6204,7 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("G") and testMenu == false and diagMenu == false and diagMenuTenMeg == true and widgetMenu == false){
         clearScreen();
-        Serial.print(F("Please enter the 10MB diagnostic command that you want to send. Leave off the command length and checksum; they will be added automatically: "));
+        Serial.print("Please enter the 10MB diagnostic command that you want to send. Leave off the command length and checksum; they will be added automatically: ");
         char charInput[2128];
         byte hexInput[1064];
         unsigned int charIndex = 0;
@@ -6225,7 +6230,7 @@ void diagLoop() {
               break;
             }
             else if(inByte == '\r' and goodInput == false){
-              Serial.print(F("Please enter the 10MB diagnostic command that you want to send. Leave off the command length and checksum; they will be added automatically: "));
+              Serial.print("Please enter the 10MB diagnostic command that you want to send. Leave off the command length and checksum; they will be added automatically: ");
               charIndex = 0;
               goodInput = true;
             }
@@ -6243,9 +6248,9 @@ void diagLoop() {
         commandBufferTenMegDiag[0] = charIndex + 1;
         calcChecksum();
         Serial.println();
-        Serial.println(F("Read commands return data and the status bytes are read before the data is sent to the ESProFile."));
-        Serial.println(F("Write commands don't return data and the status bytes are read after data has been written to the drive."));
-        Serial.print(F("Is this a read command (r) or a write command (w)? "));
+        Serial.println("Read commands return data and the status bytes are read before the data is sent to ESProFile.");
+        Serial.println("Write commands don't return data and the status bytes are read after data has been written to the drive.");
+        Serial.print("Is this a read command (r) or a write command (w)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -6258,12 +6263,12 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Is this a read command (r) or a write command (w)? "));
+              Serial.print("Is this a read command (r) or a write command (w)? ");
             }
           }
         }
         Serial.println();
-        Serial.print(F("Executing command: "));
+        Serial.print("Executing command: ");
         for(int i = 0; i <= commandBufferTenMegDiag[0]; i++){
           printDataSpace(commandBufferTenMegDiag[i]);
         }
@@ -6273,7 +6278,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = tenMegDiagRead(true, false);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the operation. The following data may be incorrect.");
             Serial.println();
           }
           printRawData();
@@ -6285,12 +6290,12 @@ void diagLoop() {
           Serial.println();
           bool writeSuccess = tenMegDiagWrite(false);
           if(writeSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the operation."));
+            Serial.println("WARNING: Errors were encountered during the operation.");
             Serial.println();
           }
           printStatus();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6305,8 +6310,8 @@ void diagLoop() {
 
       if((command.equalsIgnoreCase("1") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true and widgetServoMenu == false) or (command.equalsIgnoreCase("1") and widgetServoMenu == true)){ //Soft Reset
         clearScreen();
-        Serial.println(F("Soft-resetting the Widget controller..."));
-        Serial.print(F("Command: "));
+        Serial.println("Soft-resetting the Widget controller...");
+        Serial.print("Command: ");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x07;
         calcWidgetChecksum();
@@ -6324,14 +6329,14 @@ void diagLoop() {
         calcWidgetChecksum();
         bool readSuccess = widgetRead(false, true);
         if(readSuccess = true){
-          Serial.println(F("Widget controller was reset!"));
+          Serial.println("Widget controller was reset!");
         }
         else{
-          Serial.println(F("Error: Unable to communicate with drive after reset!"));
+          Serial.println("Error: Unable to communicate with drive after reset!");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6340,8 +6345,8 @@ void diagLoop() {
 
       if((command.equalsIgnoreCase("2") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true) or (command.equalsIgnoreCase("2") and widgetServoMenu == true)){ //Reset Servo
         clearScreen();
-        Serial.println(F("Resetting the Widget servo board..."));
-        Serial.print(F("Command: "));
+        Serial.println("Resetting the Widget servo board...");
+        Serial.print("Command: ");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x12;
         calcWidgetChecksum();
@@ -6357,15 +6362,15 @@ void diagLoop() {
         calcWidgetChecksum();
         bool readSuccess = widgetRead(false, true);
         if(readSuccess == 0){
-          Serial.println(F("Failed to send reset command!"));
+          Serial.println("Failed to send reset command!");
         }
         else{
-          Serial.println(F("Widget servo reset!"));
+          Serial.println("Widget servo reset!");
         }
         Serial.println();
         readWidgetStatus(1, 0);
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6374,11 +6379,11 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("3") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Get Widget ID
         clearScreen();
-        Serial.println(F("Reading Widget drive ID..."));
+        Serial.println("Reading Widget drive ID...");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x00;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < ((commandBufferWidget[0] & 0x0F) + 1); i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -6386,85 +6391,85 @@ void diagLoop() {
         bool readSuccess = widgetRead();
         if(readSuccess == 0){
           Serial.println();
-          Serial.println(F("WARNING: Errors were encountered while reading the drive ID. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while reading the drive ID. The following data may be incorrect.");
         }
         Serial.println();
         printRawData();
         Serial.println();
         printWidgetStatus();
-        Serial.println(F("Data Analysis:"));
-        Serial.print(F("Device Name: "));
+        Serial.println("Data Analysis:");
+        Serial.print("Device Name: ");
         for(int i = 0; i < 13; i++){
           Serial.write(blockDataBuffer[i]);
         }
         Serial.println();
-        Serial.print(F("Device Number: "));
+        Serial.print("Device Number: ");
         for(int i = 13; i < 16; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x00){
-          Serial.println(F(" (5MB ProFile) - NOT A WIDGET!"));
+          Serial.println(" (5MB ProFile) - NOT A WIDGET!");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x10){
-          Serial.println(F(" (10MB ProFile) - NOT A WIDGET!"));
+          Serial.println(" (10MB ProFile) - NOT A WIDGET!");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x00){
-          Serial.println(F(" (10MB Widget)"));
+          Serial.println(" (10MB Widget)");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x10){
-          Serial.println(F(" (20MB Widget)"));
+          Serial.println(" (20MB Widget)");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x20){
-          Serial.println(F(" (40MB Widget)"));
+          Serial.println(" (40MB Widget)");
         }
         else{
-          Serial.println(F(" (Unknown Drive Type) - PROBABLY NOT A WIDGET!"));
+          Serial.println(" (Unknown Drive Type) - PROBABLY NOT A WIDGET!");
         }
-        Serial.print(F("Firmware Revision: "));
+        Serial.print("Firmware Revision: ");
         Serial.print(blockDataBuffer[16], HEX);
-        Serial.print(F("."));
+        Serial.print(".");
         Serial.print(blockDataBuffer[17]>>4, HEX);
         Serial.println(blockDataBuffer[17]&0x0F, HEX);
-        Serial.print(F("Total Blocks: "));
+        Serial.print("Total Blocks: ");
         for(int i = 18; i < 21; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         Serial.println();
-        Serial.print(F("Bytes Per Block: "));
+        Serial.print("Bytes Per Block: ");
         for(int i = 21; i < 23; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
         }
         Serial.println();
-        Serial.print(F("Number of Cylinders: "));
+        Serial.print("Number of Cylinders: ");
         printDataNoSpace(blockDataBuffer[23]);
         printDataNoSpace(blockDataBuffer[24]);
         Serial.println();
-        Serial.print(F("Number of Heads: "));
+        Serial.print("Number of Heads: ");
         printDataNoSpace(blockDataBuffer[25]);
         Serial.println();
-        Serial.print(F("Sectors Per Track: "));
+        Serial.print("Sectors Per Track: ");
         printDataNoSpace(blockDataBuffer[26]);
         Serial.println();
-        Serial.print(F("Total Spares: "));
+        Serial.print("Total Spares: ");
         printDataNoSpace(blockDataBuffer[27]);
         printDataNoSpace(blockDataBuffer[28]);
         printDataNoSpace(blockDataBuffer[29]);
         Serial.println();
-        Serial.print(F("Spares Allocated: "));
+        Serial.print("Spares Allocated: ");
         printDataNoSpace(blockDataBuffer[30]);
         printDataNoSpace(blockDataBuffer[31]);
         printDataNoSpace(blockDataBuffer[32]);
         Serial.println();
-        Serial.print(F("Bad Blocks: "));
+        Serial.print("Bad Blocks: ");
         printDataNoSpace(blockDataBuffer[33]);
         printDataNoSpace(blockDataBuffer[34]);
         printDataNoSpace(blockDataBuffer[35]);
         Serial.println();
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6473,11 +6478,11 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("4") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Read Spare Table
         clearScreen();
-        Serial.println(F("Reading the Widget's spare table..."));
+        Serial.println("Reading the Widget's spare table...");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x0D;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < ((commandBufferWidget[0] & 0x0F) + 1); i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -6485,14 +6490,14 @@ void diagLoop() {
         bool readSuccess = widgetRead();
         if(readSuccess == 0){
           Serial.println();
-          Serial.println(F("WARNING: Errors were encountered while reading the spare table. The following data may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while reading the spare table. The following data may be incorrect.");
         }
         Serial.println();
         printRawData();
         Serial.println();
         printWidgetStatus();
-        Serial.println(F("Data Analysis:"));
-        Serial.print(F("Starting Fence: "));
+        Serial.println("Data Analysis:");
+        Serial.print("Starting Fence: ");
         bool correctFence = true;
         for(int i = 0; i < 4; i++){
           printDataSpace(blockDataBuffer[i]);
@@ -6501,37 +6506,37 @@ void diagLoop() {
           }
         }
         if(correctFence == true){
-          Serial.println(F("- Fence looks good!"));
+          Serial.println("- Fence looks good!");
         }
         else{
-          Serial.println(F("- Incorrect fence bytes!"));
+          Serial.println("- Incorrect fence bytes!");
         }
-        Serial.print(F("Spare table has been modified "));
+        Serial.print("Spare table has been modified ");
         for(int i = 4; i < 8; i++){
           printDataNoSpace(blockDataBuffer[i]);
         }
-        Serial.println(F(" times."));
-        Serial.print(F("Format Offset: "));
+        Serial.println(" times.");
+        Serial.print("Format Offset: ");
         printDataNoSpace(blockDataBuffer[8]);
         Serial.println();
-        Serial.print(F("Interleave: "));
+        Serial.print("Interleave: ");
         printDataNoSpace(blockDataBuffer[9]);
         Serial.println();
-        Serial.print(F("Spares Allocated: "));
+        Serial.print("Spares Allocated: ");
         printDataNoSpace(blockDataBuffer[0x8A]);
         Serial.println();
-        Serial.print(F("Bad Blocks: "));
+        Serial.print("Bad Blocks: ");
         printDataNoSpace(blockDataBuffer[0x8B]);
         Serial.println();
-        Serial.println(F("Bitmap of Allocated Spares:"));
-        Serial.print(F("    "));
+        Serial.println("Bitmap of Allocated Spares:");
+        Serial.print("    ");
         for(int i = 0x8C; i < 0x96; i++){
           printRawBinary(blockDataBuffer[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         bool firstTime = true;
-        Serial.print(F("    This means that spares "));
+        Serial.print("    This means that spares ");
         for(byte i = 1; i < 11; i++){
           for(byte j = 0; j < 8; j++){
             if(bitRead(blockDataBuffer[0x8B + i], j) == 1){
@@ -6539,52 +6544,52 @@ void diagLoop() {
                 firstTime = false;
               }
               else{
-                Serial.print(F(", "));
+                Serial.print(", ");
               }
               printDataNoSpace(i * (0x07 - j));
               if((((0x8B + i) == 0x8F) and ((0x07 - j) == 0x01)) or (((0x8B + i) == 0x92) and ((0x07 - j) == 0x02))){
-                Serial.print(F(" (probably spare table)"));
+                Serial.print(" (probably spare table)");
               }
             }
           }
         }
-        Serial.print(F(" are currently in use."));
+        Serial.print(" are currently in use.");
         Serial.println();
-        Serial.println(F("Head Pointer Array:"));
-        Serial.print(F("    "));
+        Serial.println("Head Pointer Array:");
+        Serial.print("    ");
         for(int i = 0; i < 128; i++){
           if(((i % 32) == 0) and (i != 0)){
             Serial.println();
-            Serial.print(F("    "));
+            Serial.print("    ");
           }
           printDataSpace(blockDataBuffer[i + 0x0A]);
         }
         Serial.println();
-        Serial.println(F("Linked Lists:"));
-        Serial.print(F("    "));
+        Serial.println("Linked Lists:");
+        Serial.print("    ");
         for(int i = 0; i < 304; i++){
           printDataNoSpace(blockDataBuffer[i + 0x96]);
           if((((i + 1) % 32) == 0) and (i != 0)){
             Serial.println();
-            Serial.print(F("   "));
+            Serial.print("   ");
           }
           if((((i + 1) % 4) == 0) and (i != 0)){
-            Serial.print(F(" "));
+            Serial.print(" ");
           }
         }
         Serial.println();
-        Serial.println(F("Interleave Map:"));
-        Serial.print(F("    Block Number:    "));
+        Serial.println("Interleave Map:");
+        Serial.print("    Block Number:    ");
         for(int i = 0; i < 19; i++){
           printDataSpace(i);
         }
         Serial.println();
-        Serial.print(F("    Physical Sector: "));
+        Serial.print("    Physical Sector: ");
         for(int i = 0x1C6; i < 0x1D9; i++){
           printDataSpace(blockDataBuffer[i]);
         }
         Serial.println();
-        Serial.print(F("Checksum: "));
+        Serial.print("Checksum: ");
         printDataNoSpace(blockDataBuffer[0x1D9]);
         printDataNoSpace(blockDataBuffer[0x1DA]);
         uint16_t correctChecksum = blockDataBuffer[0x1D9] << 8;
@@ -6594,7 +6599,7 @@ void diagLoop() {
           calculatedChecksum += blockDataBuffer[i];
         }
         Serial.println();
-        Serial.print(F("Ending Fence: "));
+        Serial.print("Ending Fence: ");
         correctFence = true;
         for(int i = 0; i < 4; i++){
           printDataSpace(blockDataBuffer[i]);
@@ -6603,13 +6608,13 @@ void diagLoop() {
           }
         }
         if(correctFence == true){
-          Serial.println(F("- Fence looks good!"));
+          Serial.println("- Fence looks good!");
         }
         else{
-          Serial.println(F("- Incorrect fence bytes!"));
+          Serial.println("- Incorrect fence bytes!");
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6618,56 +6623,56 @@ void diagLoop() {
 
       if((command.equalsIgnoreCase("5") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true) or (command.equalsIgnoreCase("3") and widgetServoMenu == true)){ //Get Controller Status
         clearScreen();
-        Serial.println(F("Reading all eight Widget controller status longwords..."));
+        Serial.println("Reading all eight Widget controller status longwords...");
         Serial.println();
 
         readWidgetStatus(1, 0);
-        Serial.print(F("Standard Status: "));
+        Serial.print("Standard Status: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(driveStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
 
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Host didn't respond with 0x55: "));
+        Serial.print("    Host didn't respond with 0x55: ");
         Serial.print(bitRead(driveStatus[0], 7));
-        Serial.print(F("                            Spare table overflow: "));
+        Serial.print("                            Spare table overflow: ");
         Serial.print(bitRead(driveStatus[1], 6));
-        Serial.print(F("                                     First time status has been read since reset: "));
+        Serial.print("                                     First time status has been read since reset: ");
         Serial.print(bitRead(driveStatus[2], 7));
-        Serial.print(F("              ECC detected a read error: "));
+        Serial.print("              ECC detected a read error: ");
         Serial.println(bitRead(driveStatus[3], 7));
 
-        Serial.print(F("    Write buffer overflow: "));
+        Serial.print("    Write buffer overflow: ");
         Serial.print(bitRead(driveStatus[0], 6));
-        Serial.print(F("                                    Five or fewer spares available: "));
+        Serial.print("                                    Five or fewer spares available: ");
         Serial.print(bitRead(driveStatus[1], 5));
-        Serial.print(F("                           Last LBA was out of range: "));
+        Serial.print("                           Last LBA was out of range: ");
         Serial.print(bitRead(driveStatus[2], 6));
-        Serial.print(F("                                CRC detected a read error: "));
+        Serial.print("                                CRC detected a read error: ");
         Serial.println(bitRead(driveStatus[3], 6));
 
-        Serial.print(F("    Read error: "));
+        Serial.print("    Read error: ");
         Serial.print(bitRead(driveStatus[0], 3));
-        Serial.print(F("                                               Controller self-test failure: "));
+        Serial.print("                                               Controller self-test failure: ");
         Serial.print(bitRead(driveStatus[1], 3));
-        Serial.print(F("                                                                                         "));
-        Serial.print(F("Header timeout on last read: "));
+        Serial.print("                                                                                         ");
+        Serial.print("Header timeout on last read: ");
         Serial.println(bitRead(driveStatus[3], 5));
 
-        Serial.print(F("    No matching header found: "));
+        Serial.print("    No matching header found: ");
         Serial.print(bitRead(driveStatus[0], 2));
-        Serial.print(F("                                 Spare table has been updated: "));
+        Serial.print("                                 Spare table has been updated: ");
         Serial.print(bitRead(driveStatus[1], 2));
-        Serial.print(F("                                                                                         "));
-        Serial.print(F("Unsuccessful retry count: "));
+        Serial.print("                                                                                         ");
+        Serial.print("Unsuccessful retry count: ");
         byte badRetries = 0x00;
         for(int i = 3; i >= 0; i--){
           badRetries += bitRead(driveStatus[3], i) << i;
@@ -6675,20 +6680,20 @@ void diagLoop() {
         printDataNoSpace(badRetries);
         Serial.println();
 
-        Serial.print(F("    Unrecoverable servo error: "));
+        Serial.print("    Unrecoverable servo error: ");
         Serial.print(bitRead(driveStatus[0], 1));
-        Serial.print(F("                                Seek to wrong track occurred: "));
+        Serial.print("                                Seek to wrong track occurred: ");
         Serial.println(bitRead(driveStatus[1], 1));
 
 
-        Serial.print(F("    Operation failed: "));
+        Serial.print("    Operation failed: ");
         Serial.print(bitRead(driveStatus[0], 0));
-        Serial.print(F("                                         Controller aborted last operation: "));
+        Serial.print("                                         Controller aborted last operation: ");
         Serial.println(bitRead(driveStatus[1], 0));
         Serial.println();
 
         readWidgetStatus(1, 1);
-        Serial.print(F("Last Logical Block: "));
+        Serial.print("Last Logical Block: ");
         printDataNoSpace(driveStatus[1]);
         printDataNoSpace(driveStatus[2]);
         printDataNoSpace(driveStatus[3]);
@@ -6696,223 +6701,223 @@ void diagLoop() {
         Serial.println();
 
         readWidgetStatus(1, 2);
-        Serial.print(F("Current Seek Address (The CHS we want the heads to be on): Cylinder "));
+        Serial.print("Current Seek Address (The CHS we want the heads to be on): Cylinder ");
         printDataNoSpace(driveStatus[0]);
         printDataNoSpace(driveStatus[1]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(driveStatus[2]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(driveStatus[3]);
-        Serial.println(F("."));
+        Serial.println(".");
         Serial.println();
 
         readWidgetStatus(1, 3);
-        Serial.print(F("Current Cylinder (The actual cylinder the heads are on): "));
+        Serial.print("Current Cylinder (The actual cylinder the heads are on): ");
         printDataNoSpace(driveStatus[0]);
         printDataNoSpace(driveStatus[1]);
         Serial.println();
         Serial.println();
 
         readWidgetStatus(1, 4);
-        Serial.print(F("Internal Status: "));
+        Serial.print("Internal Status: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(driveStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
         
-        Serial.print(F("    Recovery is on: "));
+        Serial.print("    Recovery is on: ");
         Serial.print(bitRead(driveStatus[0], 7));
-        Serial.print(F("                                           Heads are on the right track: "));
+        Serial.print("                                           Heads are on the right track: ");
         Serial.print(bitRead(driveStatus[1], 7));
-        Serial.print(F("                             Seek was needed to move to the current block: "));
+        Serial.print("                             Seek was needed to move to the current block: ");
         Serial.println(bitRead(driveStatus[2], 7));
 
-        Serial.print(F("    Spare table is almost full: "));
+        Serial.print("    Spare table is almost full: ");
         Serial.print(bitRead(driveStatus[0], 6));
-        Serial.print(F("                               Drive read a header after recal: "));
+        Serial.print("                               Drive read a header after recal: ");
         Serial.print(bitRead(driveStatus[1], 6));
-        Serial.print(F("                          Head change was needed to arrive at the current block: "));
+        Serial.print("                          Head change was needed to arrive at the current block: ");
         Serial.println(bitRead(driveStatus[2], 6));
 
-        Serial.print(F("    Buffer structure is contaminated: "));
+        Serial.print("    Buffer structure is contaminated: ");
         Serial.print(bitRead(driveStatus[0], 5));
-        Serial.print(F("                         Current operation is a write operation: "));
+        Serial.print("                         Current operation is a write operation: ");
         Serial.print(bitRead(driveStatus[1], 5));
-        Serial.print(F("                   Current block is a bad block: "));
+        Serial.print("                   Current block is a bad block: ");
         Serial.println(bitRead(driveStatus[3], 1));
 
-        Serial.print(F("    Power reset has just occurred: "));
+        Serial.print("    Power reset has just occurred: ");
         Serial.print(bitRead(driveStatus[0], 4));
-        Serial.print(F("                            Heads are parked: "));
+        Serial.print("                            Heads are parked: ");
         Serial.print(bitRead(driveStatus[1], 4));
-        Serial.print(F("                                         Current block is a spare block: "));
+        Serial.print("                                         Current block is a spare block: ");
         Serial.println(bitRead(driveStatus[1], 0));
 
-        Serial.print(F("    Standard status is nonzero: "));
+        Serial.print("    Standard status is nonzero: ");
         Serial.print(bitRead(driveStatus[0], 3));
-        Serial.print(F("                               Do sequential search of logical block look-ahead: "));
+        Serial.print("                               Do sequential search of logical block look-ahead: ");
         Serial.println(bitRead(driveStatus[1], 3));
 
-        Serial.print(F("    Controller LED is lit: "));
+        Serial.print("    Controller LED is lit: ");
         Serial.print(bitRead(driveStatus[0], 0));
-        Serial.print(F("                                    Last command was a multiblock command: "));
+        Serial.print("                                    Last command was a multiblock command: ");
         Serial.println(bitRead(driveStatus[1], 2));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Seek complete: "));
+        Serial.print("                                                                ");
+        Serial.print("Seek complete: ");
         Serial.println(bitRead(driveStatus[1], 1));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Servo auto-offset is on: "));
+        Serial.print("                                                                ");
+        Serial.print("Servo auto-offset is on: ");
         Serial.println(bitRead(driveStatus[1], 0));
         Serial.println();
 
         readWidgetStatus(1, 5);
-        Serial.print(F("State Registers: "));
+        Serial.print("State Registers: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(driveStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
 
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("RAM failure: "));
+        Serial.print("                                                                ");
+        Serial.print("RAM failure: ");
         Serial.print(bitRead(driveStatus[1], 7));
-        Serial.print(F("                                              Read/write direction set to read: "));
+        Serial.print("                                              Read/write direction set to read: ");
         Serial.print(bitRead(driveStatus[2], 7));
-        Serial.print(F("                         /CRC error: "));
+        Serial.print("                         /CRC error: ");
         Serial.println(bitRead(driveStatus[3], 7));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("EPROM failure: "));
+        Serial.print("                                                                ");
+        Serial.print("EPROM failure: ");
         Serial.print(bitRead(driveStatus[1], 6));
-        Serial.print(F("                                            Servo is able to accept a command: "));
+        Serial.print("                                            Servo is able to accept a command: ");
         Serial.print(bitRead(driveStatus[2], 6));
-        Serial.print(F("                        /Write not valid: "));
+        Serial.print("                        /Write not valid: ");
         Serial.println(bitRead(driveStatus[3], 6));
         
-        Serial.print(F("                                                                "));
-        Serial.print(F("Disk speed failure: "));
+        Serial.print("                                                                ");
+        Serial.print("Disk speed failure: ");
         Serial.print(bitRead(driveStatus[1], 5));
-        Serial.print(F("                                       MSel1: "));
+        Serial.print("                                       MSel1: ");
         Serial.print(bitRead(driveStatus[2], 5));
-        Serial.print(F("                                                    Servo ready: "));
+        Serial.print("                                                    Servo ready: ");
         Serial.println(bitRead(driveStatus[3], 5));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Servo failure: "));
+        Serial.print("                                                                ");
+        Serial.print("Servo failure: ");
         Serial.print(bitRead(driveStatus[1], 4));
-        Serial.print(F("                                            MSel0: "));
+        Serial.print("                                            MSel0: ");
         Serial.print(bitRead(driveStatus[2], 4));
-        Serial.print(F("                                                    Servo error: "));
+        Serial.print("                                                    Servo error: ");
         Serial.println(bitRead(driveStatus[3], 4));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Sector count failure: "));
+        Serial.print("                                                                ");
+        Serial.print("Sector count failure: ");
         Serial.print(bitRead(driveStatus[1], 3));
-        Serial.print(F("                                     BSY: "));
+        Serial.print("                                     BSY: ");
         Serial.print(bitRead(driveStatus[2], 3));
-        Serial.print(F("                                                      Controller state machine state: "));
+        Serial.print("                                                      Controller state machine state: ");
         printDataNoSpace(driveStatus[3] & 0x0F);
         Serial.println();
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("State machine failure: "));
+        Serial.print("                                                                ");
+        Serial.print("State machine failure: ");
         Serial.print(bitRead(driveStatus[1], 2));
-        Serial.print(F("                                    CMD: "));
+        Serial.print("                                    CMD: ");
         Serial.println(bitRead(driveStatus[2], 2));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Read/write failure: "));
+        Serial.print("                                                                ");
+        Serial.print("Read/write failure: ");
         Serial.print(bitRead(driveStatus[1], 1));
-        Serial.print(F("                                       ECC error: "));
+        Serial.print("                                       ECC error: ");
         Serial.println(bitRead(driveStatus[2], 1));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("No spare table found: "));
+        Serial.print("                                                                ");
+        Serial.print("No spare table found: ");
         Serial.print(bitRead(driveStatus[1], 0));
-        Serial.print(F("                                     State machine is running: "));
+        Serial.print("                                     State machine is running: ");
         Serial.println(bitRead(driveStatus[2], 0));
         Serial.println();
 
         readWidgetStatus(1, 6);
-        Serial.print(F("Exception Registers: "));
+        Serial.print("Exception Registers: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(driveStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
 
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Read error occurred on last read attempt: "));
+        Serial.print("    Read error occurred on last read attempt: ");
         Serial.print(bitRead(driveStatus[0], 7));
-        Serial.print(F("                 Error detected by ECC circuitry: "));
+        Serial.print("                 Error detected by ECC circuitry: ");
         Serial.print(bitRead(driveStatus[1], 7));
-        Serial.print(F("                          Write error occurred on last write attempt: "));
+        Serial.print("                          Write error occurred on last write attempt: ");
         Serial.print(bitRead(driveStatus[2], 7));
-        Serial.print(F("               Number of bad retries during last write attempt: "));
+        Serial.print("               Number of bad retries during last write attempt: ");
         printDataNoSpace(driveStatus[3]);
         Serial.println();
 
-        Serial.print(F("    Servo error while reading: "));
+        Serial.print("    Servo error while reading: ");
         Serial.print(bitRead(driveStatus[0], 6));
-        Serial.print(F("                                Error detected by CRC circuitry: "));
+        Serial.print("                                Error detected by CRC circuitry: ");
         Serial.print(bitRead(driveStatus[1], 6));
-        Serial.print(F("                          Servo error while writing: "));
+        Serial.print("                          Servo error while writing: ");
         Serial.println(bitRead(driveStatus[2], 6));
 
-        Serial.print(F("    At least one successful read in last read attempt: "));
+        Serial.print("    At least one successful read in last read attempt: ");
         Serial.print(bitRead(driveStatus[0], 5));
-        Serial.print(F("        Header timeout: "));
+        Serial.print("        Header timeout: ");
         Serial.print(bitRead(driveStatus[1], 5));
-        Serial.print(F("                                           At least one successful write during last write attempt: "));
+        Serial.print("                                           At least one successful write during last write attempt: ");
         Serial.println(bitRead(driveStatus[2], 5));
 
-        Serial.print(F("    No matching header was found during last read attempt: "));
+        Serial.print("    No matching header was found during last read attempt: ");
         Serial.print(bitRead(driveStatus[0], 4));
-        Serial.print(F("    Number of bad retries during last read attempt: "));
+        Serial.print("    Number of bad retries during last read attempt: ");
         printDataNoSpace(driveStatus[1] & 0x0F);
-        Serial.print(F("          No matching header found during last write attempt: "));
+        Serial.print("          No matching header found during last write attempt: ");
         Serial.println(bitRead(driveStatus[2], 4));
 
-        Serial.print(F("    CRC or ECC error occurred during last read attempt: "));
+        Serial.print("    CRC or ECC error occurred during last read attempt: ");
         Serial.println(bitRead(driveStatus[0], 3));
         Serial.println();
 
         readWidgetStatus(1, 7);
-        Serial.print(F("Last Seek Address (The CHS that we previously wanted the heads to be on): Cylinder "));
+        Serial.print("Last Seek Address (The CHS that we previously wanted the heads to be on): Cylinder ");
         printDataNoSpace(driveStatus[0]);
         printDataNoSpace(driveStatus[1]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(driveStatus[2]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(driveStatus[3]);
-        Serial.println(F("."));
+        Serial.println(".");
         Serial.println();
         readWidgetStatus(1, 0);
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -6921,7 +6926,7 @@ void diagLoop() {
 
       if((command.equalsIgnoreCase("6") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true) or (command.equalsIgnoreCase("4") and widgetServoMenu == true)){ //Get Servo Status
         clearScreen();
-        Serial.println(F("Reading all eight Widget servo status longwords..."));
+        Serial.println("Reading all eight Widget servo status longwords...");
         Serial.println();
         setLEDColor(0, 1);
         byte servoStatus[32];
@@ -6934,52 +6939,52 @@ void diagLoop() {
         }
 
         readWidgetStatus(2, 0);
-        Serial.print(F("Standard Status: "));
+        Serial.print("Standard Status: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(driveStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
 
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Host didn't respond with 0x55: "));
+        Serial.print("    Host didn't respond with 0x55: ");
         Serial.print(bitRead(driveStatus[0], 7));
-        Serial.print(F("                            Spare table overflow: "));
+        Serial.print("                            Spare table overflow: ");
         Serial.print(bitRead(driveStatus[1], 6));
-        Serial.print(F("                                     First time status has been read since reset: "));
+        Serial.print("                                     First time status has been read since reset: ");
         Serial.print(bitRead(driveStatus[2], 7));
-        Serial.print(F("              ECC detected a read error: "));
+        Serial.print("              ECC detected a read error: ");
         Serial.println(bitRead(driveStatus[3], 7));
 
-        Serial.print(F("    Write buffer overflow: "));
+        Serial.print("    Write buffer overflow: ");
         Serial.print(bitRead(driveStatus[0], 6));
-        Serial.print(F("                                    Five or fewer spares available: "));
+        Serial.print("                                    Five or fewer spares available: ");
         Serial.print(bitRead(driveStatus[1], 5));
-        Serial.print(F("                           Last LBA was out of range: "));
+        Serial.print("                           Last LBA was out of range: ");
         Serial.print(bitRead(driveStatus[2], 6));
-        Serial.print(F("                                CRC detected a read error: "));
+        Serial.print("                                CRC detected a read error: ");
         Serial.println(bitRead(driveStatus[3], 6));
 
-        Serial.print(F("    Read error: "));
+        Serial.print("    Read error: ");
         Serial.print(bitRead(driveStatus[0], 3));
-        Serial.print(F("                                               Controller self-test failure: "));
+        Serial.print("                                               Controller self-test failure: ");
         Serial.print(bitRead(driveStatus[1], 3));
-        Serial.print(F("                                                                                         "));
-        Serial.print(F("Header timeout on last read: "));
+        Serial.print("                                                                                         ");
+        Serial.print("Header timeout on last read: ");
         Serial.println(bitRead(driveStatus[3], 5));
 
-        Serial.print(F("    No matching header found: "));
+        Serial.print("    No matching header found: ");
         Serial.print(bitRead(driveStatus[0], 2));
-        Serial.print(F("                                 Spare table has been updated: "));
+        Serial.print("                                 Spare table has been updated: ");
         Serial.print(bitRead(driveStatus[1], 2));
-        Serial.print(F("                                                                                         "));
-        Serial.print(F("Unsuccessful retry count: "));
+        Serial.print("                                                                                         ");
+        Serial.print("Unsuccessful retry count: ");
         byte badRetries = 0x00;
         for(int i = 3; i >= 0; i--){
           badRetries += bitRead(driveStatus[3], i) << i;
@@ -6987,575 +6992,575 @@ void diagLoop() {
         printDataNoSpace(badRetries);
         Serial.println();
 
-        Serial.print(F("    Unrecoverable servo error: "));
+        Serial.print("    Unrecoverable servo error: ");
         Serial.print(bitRead(driveStatus[0], 1));
-        Serial.print(F("                                Seek to wrong track occurred: "));
+        Serial.print("                                Seek to wrong track occurred: ");
         Serial.println(bitRead(driveStatus[1], 1));
 
 
-        Serial.print(F("    Operation failed: "));
+        Serial.print("    Operation failed: ");
         Serial.print(bitRead(driveStatus[0], 0));
-        Serial.print(F("                                         Controller aborted last operation: "));
+        Serial.print("                                         Controller aborted last operation: ");
         Serial.println(bitRead(driveStatus[1], 0));
         Serial.println();
 
 
-        Serial.print(F("Servo Status 01: "));
+        Serial.print("Servo Status 01: ");
         for(int i = 0; i < 4; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Power amp off and heads are parked: "));
+        Serial.print("    Power amp off and heads are parked: ");
         Serial.print(bitRead(servoStatus[0], 0));
-        Serial.print(F("                       Fine offset DAC value: "));
+        Serial.print("                       Fine offset DAC value: ");
         if(bitRead(servoStatus[1], 5) == 0){
-          Serial.print(F("-"));
+          Serial.print("-");
           printDataNoSpace(servoStatus[1] & 0x1F);
         }
         else{
           printDataNoSpace(servoStatus[1] & 0x1F);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
-        Serial.print(F("                                  Op-amp at U2G is fast: "));
+        Serial.print("                                  Op-amp at U2G is fast: ");
         Serial.print(bitRead(servoStatus[2], 0));
-        Serial.print(F("                                    P3.2 IRQ: "));
+        Serial.print("                                    P3.2 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 0));
 
-        Serial.print(F("    HA-2405 multiplexer at U3E D0: "));
+        Serial.print("    HA-2405 multiplexer at U3E D0: ");
         Serial.print(bitRead(servoStatus[0], 1));
-        Serial.print(F("                            HA-2405 multiplexer at U5D D0: "));
+        Serial.print("                            HA-2405 multiplexer at U5D D0: ");
         Serial.print(bitRead(servoStatus[1], 6));
-        Serial.print(F("                            On track window??: "));
+        Serial.print("                            On track window??: ");
         Serial.print(bitRead(servoStatus[2], 1));
-        Serial.print(F("                                        P3.3 IRQ: "));
+        Serial.print("                                        P3.3 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 1));
 
-        Serial.print(F("    HA-2405 multiplexer at U3E D1: "));
+        Serial.print("    HA-2405 multiplexer at U3E D1: ");
         Serial.print(bitRead(servoStatus[0], 2));
-        Serial.print(F("                            HA-2405 multiplexer at U5D D1: "));
+        Serial.print("                            HA-2405 multiplexer at U5D D1: ");
         Serial.print(bitRead(servoStatus[1], 7));
-        Serial.print(F("                            Position error is greater than DAC value: "));
+        Serial.print("                            Position error is greater than DAC value: ");
         Serial.print(bitRead(servoStatus[2], 2));
-        Serial.print(F("                 P3.1 IRQ: "));
+        Serial.print("                 P3.1 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 2));
 
 
-        Serial.print(F("    HA-2405 multiplexer at U3E is enabled: "));
+        Serial.print("    HA-2405 multiplexer at U3E is enabled: ");
         Serial.print(bitRead(servoStatus[0], 3));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                    Auto-zero the integrator at U1B: "));
+        Serial.print("                                                            ");
+        Serial.print("                    Auto-zero the integrator at U1B: ");
         Serial.print(bitRead(servoStatus[2], 3));
-        Serial.print(F("                          P3.0 IRQ: "));
+        Serial.print("                          P3.0 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 3));
 
-        Serial.print(F("    L291 DAC offset strobe is off: "));
+        Serial.print("    L291 DAC offset strobe is off: ");
         Serial.print(bitRead(servoStatus[0], 4));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                            In final track window?: "));
+        Serial.print("                                                            ");
+        Serial.print("                            In final track window?: ");
         Serial.print(bitRead(servoStatus[2], 4));
-        Serial.print(F("                                   Timer 0 IRQ: "));
+        Serial.print("                                   Timer 0 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 4));
 
-        Serial.print(F("    Recal mode selected: "));
+        Serial.print("    Recal mode selected: ");
         Serial.print(bitRead(servoStatus[0], 5));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                      Op-amp at U2H is fast: "));
+        Serial.print("                                                            ");
+        Serial.print("                                      Op-amp at U2H is fast: ");
         Serial.print(bitRead(servoStatus[2], 5));
-        Serial.print(F("                                    Timer 1 IRQ: "));
+        Serial.print("                                    Timer 1 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 5));
 
-        Serial.print(F("    Settling mode selected: "));
+        Serial.print("    Settling mode selected: ");
         Serial.print(bitRead(servoStatus[0], 6));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                   HA-2405 multiplexer at U3C D0: "));
+        Serial.print("                                                            ");
+        Serial.print("                                   HA-2405 multiplexer at U3C D0: ");
         Serial.print(bitRead(servoStatus[2], 6));
-        Serial.print(F("                            Bit 6 IRQ: "));
+        Serial.print("                            Bit 6 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 6));
 
-        Serial.print(F("    Access mode selected: "));
+        Serial.print("    Access mode selected: ");
         Serial.print(bitRead(servoStatus[0], 7));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                     Odd/even is odd: "));
+        Serial.print("                                                            ");
+        Serial.print("                                     Odd/even is odd: ");
         Serial.print(bitRead(servoStatus[2], 7));
-        Serial.print(F("                                          Bit 7 IRQ: "));
+        Serial.print("                                          Bit 7 IRQ: ");
         Serial.println(bitRead(servoStatus[3], 7));
         Serial.println();
 
 
-        Serial.print(F("Servo Status 02: "));
+        Serial.print("Servo Status 02: ");
         for(int i = 4; i < 8; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Serial I/O register contents: "));
+        Serial.print("    Serial I/O register contents: ");
         printDataNoSpace(servoStatus[4]);
-        Serial.print(F("                            Serial I/O transmit out: "));
+        Serial.print("                            Serial I/O transmit out: ");
         Serial.print(bitRead(servoStatus[5], 0));
-        Serial.print(F("                                  Timer 0 load: "));
+        Serial.print("                                  Timer 0 load: ");
         Serial.print(bitRead(servoStatus[6], 0));
-        Serial.print(F("                                             User flag F1: "));
+        Serial.print("                                             User flag F1: ");
         Serial.println(bitRead(servoStatus[7], 0));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Servo error: "));
+        Serial.print("                                                                ");
+        Serial.print("Servo error: ");
         Serial.print(bitRead(servoStatus[5], 1));
-        Serial.print(F("                                              Timer 0 count enabled: "));
+        Serial.print("                                              Timer 0 count enabled: ");
         Serial.print(bitRead(servoStatus[6], 1));
-        Serial.print(F("                                    User flag F2: "));
+        Serial.print("                                    User flag F2: ");
         Serial.println(bitRead(servoStatus[7], 1));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Servo ready: "));
+        Serial.print("                                                                ");
+        Serial.print("Servo ready: ");
         Serial.print(bitRead(servoStatus[5], 2));
-        Serial.print(F("                                              Timer 1 load: "));
+        Serial.print("                                              Timer 1 load: ");
         Serial.print(bitRead(servoStatus[6], 2));
-        Serial.print(F("                                             Half carry: "));
+        Serial.print("                                             Half carry: ");
         Serial.println(bitRead(servoStatus[7], 2));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Serial I/O ready: "));
+        Serial.print("                                                                ");
+        Serial.print("Serial I/O ready: ");
         Serial.print(bitRead(servoStatus[5], 3));
-        Serial.print(F("                                         Timer 1 count enabled: "));
+        Serial.print("                                         Timer 1 count enabled: ");
         Serial.print(bitRead(servoStatus[6], 3));
-        Serial.print(F("                                    Decimal adjust: "));
+        Serial.print("                                    Decimal adjust: ");
         Serial.println(bitRead(servoStatus[7], 3));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Port 3.3: "));
+        Serial.print("                                                                ");
+        Serial.print("Port 3.3: ");
         Serial.print(bitRead(servoStatus[5], 4));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                                 Overflow: "));
+        Serial.print("                                                            ");
+        Serial.print("                                                 Overflow: ");
         Serial.println(bitRead(servoStatus[7], 4));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Port 3.2: "));
+        Serial.print("                                                                ");
+        Serial.print("Port 3.2: ");
         Serial.print(bitRead(servoStatus[5], 5));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                                 Sign: "));
+        Serial.print("                                                            ");
+        Serial.print("                                                 Sign: ");
         Serial.println(bitRead(servoStatus[7], 5));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Port 3.1: "));
+        Serial.print("                                                                ");
+        Serial.print("Port 3.1: ");
         Serial.print(bitRead(servoStatus[5], 6));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                                 Zero: "));
+        Serial.print("                                                            ");
+        Serial.print("                                                 Zero: ");
         Serial.println(bitRead(servoStatus[7], 6));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("Serial I/O receive in: "));
+        Serial.print("                                                                ");
+        Serial.print("Serial I/O receive in: ");
         Serial.print(bitRead(servoStatus[5], 7));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                    Carry: "));
+        Serial.print("                                                            ");
+        Serial.print("                                    Carry: ");
         Serial.println(bitRead(servoStatus[7], 7));
         Serial.println();
 
-        Serial.print(F("Servo Status 03: "));
+        Serial.print("Servo Status 03: ");
         for(int i = 8; i < 12; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Timer 0 value: "));
+        Serial.print("    Timer 0 value: ");
         printDataNoSpace(servoStatus[8]);
-        Serial.print(F("                                           Timer 1 value: "));
+        Serial.print("                                           Timer 1 value: ");
         printDataNoSpace(servoStatus[9]);
-        Serial.print(F("                                           P3.2 interrupt mask: "));
+        Serial.print("                                           P3.2 interrupt mask: ");
         Serial.print(bitRead(servoStatus[10], 0));
-        Serial.print(F("                                      Register pointer value: "));
+        Serial.print("                                      Register pointer value: ");
         printDataNoSpace(servoStatus[11]);
         Serial.println();
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("P3.3 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("P3.3 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 1));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("P3.1 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("P3.1 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 2));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("P3.0 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("P3.0 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 3));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("Timer 0 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("Timer 0 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 4));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("Timer 1 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("Timer 1 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 5));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("Bit 6 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("Bit 6 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 6));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("Bit 7 interrupt mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("Bit 7 interrupt mask: ");
         Serial.println(bitRead(servoStatus[10], 7));
         Serial.println();
 
-        Serial.print(F("Servo Status 04: "));
+        Serial.print("Servo Status 04: ");
         for(int i = 12; i < 16; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Most significant byte of stack pointer: "));
+        Serial.print("    Most significant byte of stack pointer: ");
         printDataNoSpace(servoStatus[12]);
-        Serial.print(F("                  Least significant byte of stack pointer: "));
+        Serial.print("                  Least significant byte of stack pointer: ");
         printDataNoSpace(servoStatus[13]);
-        Serial.print(F("                 Upper four bits of servo command byte: "));
+        Serial.print("                 Upper four bits of servo command byte: ");
         Serial.print(bitRead(servoStatus[14], 3));
         Serial.print(bitRead(servoStatus[14], 2));
         Serial.print(bitRead(servoStatus[14], 1));
         Serial.print(bitRead(servoStatus[14], 0));
-        Serial.print(F("                 Most significant byte of access timeout: "));
+        Serial.print("                 Most significant byte of access timeout: ");
         printDataNoSpace(servoStatus[15]);
         Serial.println();
         Serial.println();
-        Serial.print(F("                                     So the full stack pointer value is "));
+        Serial.print("                                     So the full stack pointer value is ");
         printDataNoSpace(servoStatus[12]);
         printDataNoSpace(servoStatus[13]);
-        Serial.print(F("."));
-        Serial.print(F("                                               "));
-        Serial.print(F("Servo command from upper four bits of command byte: "));
+        Serial.print(".");
+        Serial.print("                                               ");
+        Serial.print("Servo command from upper four bits of command byte: ");
         if((servoStatus[14] & 0x0F) == 0b00001000){
-          Serial.println(F("Access"));
+          Serial.println("Access");
         }
         else if((servoStatus[14] & 0x0F) == 0b00001001){
-          Serial.println(F("Access with offset"));
+          Serial.println("Access with offset");
         }
         else if((servoStatus[14] & 0x0F) == 0b00000100){
-          Serial.println(F("Data recal"));
+          Serial.println("Data recal");
         }
         else if((servoStatus[14] & 0x0F) == 0b00000111){
-          Serial.println(F("Format recal"));
+          Serial.println("Format recal");
         }
         else if((servoStatus[14] & 0x0F) == 0b00000001){
-          Serial.println(F("Offset"));
+          Serial.println("Offset");
         }
         else if((servoStatus[14] & 0x0F) == 0b00000010){
-          Serial.println(F("Diagnostic"));
+          Serial.println("Diagnostic");
         }
         else if((servoStatus[14] & 0x0F) == 0b00000000){
-          Serial.println(F("Read status"));
+          Serial.println("Read status");
         }
         else if((servoStatus[14] & 0x0F) == 0b00001100){
-          Serial.println(F("Home"));
+          Serial.println("Home");
         }
         else{
-          Serial.println(F("Unknown command"));
+          Serial.println("Unknown command");
         }
         Serial.println();
 
 
 
-        Serial.print(F("Servo Status 05: "));
+        Serial.print("Servo Status 05: ");
         for(int i = 16; i < 20; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("    Byte 0:"));
-        Serial.print(F("                                                     Byte 1:"));
-        Serial.print(F("                                                     Byte 2:"));
-        Serial.println(F("                                                     Byte 3:"));
+        Serial.print("    Byte 0:");
+        Serial.print("                                                     Byte 1:");
+        Serial.print("                                                     Byte 2:");
+        Serial.println("                                                     Byte 3:");
         Serial.println();
 
-        Serial.print(F("    Scratch byte 0E: "));
+        Serial.print("    Scratch byte 0E: ");
         printDataNoSpace(servoStatus[16]);
-        Serial.print(F("                                         Scratch byte 0C: "));
+        Serial.print("                                         Scratch byte 0C: ");
         printDataNoSpace(servoStatus[17]);
-        Serial.print(F("                                         State machine fault state: "));
+        Serial.print("                                         State machine fault state: ");
         printDataNoSpace(servoStatus[18]);
-        Serial.print(F("                               Offset DAC value mask: "));
+        Serial.print("                               Offset DAC value mask: ");
         if(bitRead(servoStatus[19], 5) == 0){
-          Serial.print(F("-"));
+          Serial.print("-");
           printDataNoSpace(servoStatus[19] & 0x1F);
         }
         else{
           printDataNoSpace(servoStatus[19] & 0x1F);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("HA-2405 multiplexer at U5D D0 mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("                                                            ");
+        Serial.print("HA-2405 multiplexer at U5D D0 mask: ");
         Serial.println(bitRead(servoStatus[19], 6));
 
-        Serial.print(F("                                                                "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("                                                            "));
-        Serial.print(F("HA-2405 multiplexer at U5D D1 mask: "));
+        Serial.print("                                                                ");
+        Serial.print("                                                            ");
+        Serial.print("                                                            ");
+        Serial.print("HA-2405 multiplexer at U5D D1 mask: ");
         Serial.println(bitRead(servoStatus[19], 7));
         Serial.println();
 
-        Serial.print(F("Servo Status 06 (Last Command Received): "));
+        Serial.print("Servo Status 06 (Last Command Received): ");
         for(int i = 20; i < 24; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.println(F("    Command Interpretation:"));
-        Serial.print(F("        Command Bits: "));
+        Serial.println("    Command Interpretation:");
+        Serial.print("        Command Bits: ");
         Serial.print(bitRead(servoStatus[20], 7));
         Serial.print(bitRead(servoStatus[20], 6));
         Serial.print(bitRead(servoStatus[20], 5));
         Serial.print(bitRead(servoStatus[20], 4));
         if((servoStatus[20] & 0xF0) == 0b10000000){
-          Serial.println(F(" - Access"));
+          Serial.println(" - Access");
         }
         else if((servoStatus[20] & 0xF0) == 0b10010000){
-          Serial.println(F(" - Access with offset"));
+          Serial.println(" - Access with offset");
         }
         else if((servoStatus[20] & 0xF0) == 0b01000000){
-          Serial.println(F(" - Data recal"));
+          Serial.println(" - Data recal");
         }
         else if((servoStatus[20] & 0xF0) == 0b01110000){
-          Serial.println(F(" - Format recal"));
+          Serial.println(" - Format recal");
         }
         else if((servoStatus[20] & 0xF0) == 0b00010000){
-          Serial.println(F(" - Offset"));
+          Serial.println(" - Offset");
         }
         else if((servoStatus[20] & 0xF0) == 0b00100000){
-          Serial.println(F(" - Diagnostic"));
+          Serial.println(" - Diagnostic");
         }
         else if((servoStatus[20] & 0xF0) == 0b00000000){
-          Serial.println(F(" - Read status"));
+          Serial.println(" - Read status");
         }
         else if((servoStatus[20] & 0x0F) == 0b11000000){
-          Serial.println(F(" - Home"));
+          Serial.println(" - Home");
         }
         else{
-          Serial.println(F(" - Unknown command"));
+          Serial.println(" - Unknown command");
         }
 
-        Serial.print(F("        Access arguments: "));
+        Serial.print("        Access arguments: ");
         printDataNoSpace(servoStatus[20] & 0b00000111);
         printDataNoSpace(servoStatus[21]);
         if(((servoStatus[20] & 0b00000111) == 0) and servoStatus[21] == 0){
-          Serial.println(F(" - Since all of these arguments are zero, they are not used for this command."));
+          Serial.println(" - Since all of these arguments are zero, they are not used for this command.");
         }
         else{
-          Serial.print(F(" - Move the heads "));
+          Serial.print(" - Move the heads ");
           printDataNoSpace(servoStatus[20] & 0b00000011);
           printDataNoSpace(servoStatus[21]);
-          Serial.print(F(" tracks "));
+          Serial.print(" tracks ");
           if(bitRead(servoStatus[20], 2) == 1){
-            Serial.print(F("towards"));
+            Serial.print("towards");
           }
           else{
-            Serial.print(F("away from"));
+            Serial.print("away from");
           }
-          Serial.println(F(" the spindle."));
+          Serial.println(" the spindle.");
         }
-        Serial.print(F("        Offset arguments: "));
+        Serial.print("        Offset arguments: ");
         printDataNoSpace(servoStatus[22]);
         if(servoStatus[30] == 0){
-          Serial.print(F(" - Since all of these arguments are zero, they are not used for this command."));
+          Serial.print(" - Since all of these arguments are zero, they are not used for this command.");
         }
         else if(bitRead(servoStatus[22] , 6) == 1){
-          Serial.print(F(" - Turn auto-offset on."));
+          Serial.print(" - Turn auto-offset on.");
         }
         else{
-          Serial.print(F(" - Move the heads by a manual fine offset of "));
+          Serial.print(" - Move the heads by a manual fine offset of ");
           printDataNoSpace(servoStatus[22] & 0b00011111);
           if(bitRead(servoStatus[22], 7) == 1){
-            Serial.print(F(" towards"));
+            Serial.print(" towards");
           }
           else{
-            Serial.print(F(" away from"));
+            Serial.print(" away from");
           }
-          Serial.print(F(" the spindle with auto-offset off."));
+          Serial.print(" the spindle with auto-offset off.");
         }
         if(bitRead(servoStatus[22], 5) == 1){
-          Serial.print(F(" Then read the offset value from the DAC."));
+          Serial.print(" Then read the offset value from the DAC.");
         }
         Serial.println();
-        Serial.print(F("        Status arguments: "));
+        Serial.print("        Status arguments: ");
         printDataNoSpace(servoStatus[23]);
-        Serial.print(F(" - Serial link is operating at "));
+        Serial.print(" - Serial link is operating at ");
         if(bitRead(servoStatus[23], 7) == 1){
-          Serial.print(F("57600 baud, "));
+          Serial.print("57600 baud, ");
         }
         else{
-          Serial.print(F("19200 baud, "));
+          Serial.print("19200 baud, ");
         }
-        Serial.print(F("the power-on reset bit is "));
+        Serial.print("the power-on reset bit is ");
         if(bitRead(servoStatus[23], 6) == 1){
-          Serial.print(F("active, "));
+          Serial.print("active, ");
         }
         else{
-          Serial.print(F("not active, "));
+          Serial.print("not active, ");
         }
-        Serial.print(F("and the servo's status/diagnostic bits are "));
+        Serial.print("and the servo's status/diagnostic bits are ");
         Serial.print(bitRead(servoStatus[23], 3));
         Serial.print(bitRead(servoStatus[23], 2));
         Serial.print(bitRead(servoStatus[23], 1));
         Serial.print(bitRead(servoStatus[23], 0));
-        Serial.println(F("."));
+        Serial.println(".");
         Serial.println();
 
 
-        Serial.print(F("Servo Status 07: "));
+        Serial.print("Servo Status 07: ");
         for(int i = 24; i < 28; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
-        Serial.println(F(" - This status longword contains the IRQ, P0, P3, and P1_Mask bytes, which we already printed in other status longwords, so there's no need to interpret them again here!"));
+        Serial.println(" - This status longword contains the IRQ, P0, P3, and P1_Mask bytes, which we already printed in other status longwords, so there's no need to interpret them again here!");
         Serial.println();
 
 
 
-        Serial.print(F("Servo Status 08 (Last Command Processed): "));
+        Serial.print("Servo Status 08 (Last Command Processed): ");
         for(int i = 28; i < 32; i++){
           printRawBinary(servoStatus[i]);
-          Serial.print(F(" "));
+          Serial.print(" ");
         }
         Serial.println();
         Serial.println();
-        Serial.println(F("    Command Interpretation:"));
-        Serial.print(F("        Command Bits: "));
+        Serial.println("    Command Interpretation:");
+        Serial.print("        Command Bits: ");
         Serial.print(bitRead(servoStatus[28], 7));
         Serial.print(bitRead(servoStatus[28], 6));
         Serial.print(bitRead(servoStatus[28], 5));
         Serial.print(bitRead(servoStatus[28], 4));
         if((servoStatus[28] & 0xF0) == 0b10000000){
-          Serial.println(F(" - Access"));
+          Serial.println(" - Access");
         }
         else if((servoStatus[28] & 0xF0) == 0b10010000){
-          Serial.println(F(" - Access with offset"));
+          Serial.println(" - Access with offset");
         }
         else if((servoStatus[28] & 0xF0) == 0b01000000){
-          Serial.println(F(" - Data recal"));
+          Serial.println(" - Data recal");
         }
         else if((servoStatus[28] & 0xF0) == 0b01110000){
-          Serial.println(F(" - Format recal"));
+          Serial.println(" - Format recal");
         }
         else if((servoStatus[28] & 0xF0) == 0b00010000){
-          Serial.println(F(" - Offset"));
+          Serial.println(" - Offset");
         }
         else if((servoStatus[28] & 0xF0) == 0b00100000){
-          Serial.println(F(" - Diagnostic"));
+          Serial.println(" - Diagnostic");
         }
         else if((servoStatus[28] & 0xF0) == 0b00000000){
-          Serial.println(F(" - Read status"));
+          Serial.println(" - Read status");
         }
         else if((servoStatus[28] & 0x0F) == 0b11000000){
-          Serial.println(F(" - Home"));
+          Serial.println(" - Home");
         }
         else{
-          Serial.println(F(" - Unknown command"));
+          Serial.println(" - Unknown command");
         }
-        Serial.print(F("        Access arguments: "));
+        Serial.print("        Access arguments: ");
         printDataNoSpace(servoStatus[28] & 0b00000111);
         printDataNoSpace(servoStatus[29]);
         if(((servoStatus[28] & 0b00000111) == 0) and servoStatus[29] == 0){
-          Serial.println(F(" - Since all of these arguments are zero, they are not used for this command."));
+          Serial.println(" - Since all of these arguments are zero, they are not used for this command.");
         }
         else{
-          Serial.print(F(" - Move the heads "));
+          Serial.print(" - Move the heads ");
           printDataNoSpace(servoStatus[28] & 0b00000011);
           printDataNoSpace(servoStatus[29]);
-          Serial.print(F(" tracks "));
+          Serial.print(" tracks ");
           if(bitRead(servoStatus[28], 2) == 1){
-            Serial.print(F("towards"));
+            Serial.print("towards");
           }
           else{
-            Serial.print(F("away from"));
+            Serial.print("away from");
           }
-          Serial.println(F(" the spindle."));
+          Serial.println(" the spindle.");
         }
-        Serial.print(F("        Offset arguments: "));
+        Serial.print("        Offset arguments: ");
         printDataNoSpace(servoStatus[30]);
         if(servoStatus[30] == 0){
-          Serial.print(F(" - Since all of these arguments are zero, they are not used for this command."));
+          Serial.print(" - Since all of these arguments are zero, they are not used for this command.");
         }
         else if(bitRead(servoStatus[30] , 6) == 1){
-          Serial.print(F(" - Turn auto-offset on."));
+          Serial.print(" - Turn auto-offset on.");
         }
         else{
-          Serial.print(F(" - Move the heads by a manual fine offset of "));
+          Serial.print(" - Move the heads by a manual fine offset of ");
           printDataNoSpace(servoStatus[30] & 0b00011111);
           if(bitRead(servoStatus[30], 7) == 1){
-            Serial.print(F(" towards"));
+            Serial.print(" towards");
           }
           else{
-            Serial.print(F(" away from"));
+            Serial.print(" away from");
           }
-          Serial.print(F(" the spindle with auto-offset off."));
+          Serial.print(" the spindle with auto-offset off.");
         }
         if(bitRead(servoStatus[30], 5) == 1){
-          Serial.print(F(" Then read the offset value from the DAC."));
+          Serial.print(" Then read the offset value from the DAC.");
         }
         Serial.println();
-        Serial.print(F("        Status arguments: "));
+        Serial.print("        Status arguments: ");
         printDataNoSpace(servoStatus[31]);
-        Serial.print(F(" - Serial link is operating at "));
+        Serial.print(" - Serial link is operating at ");
         if(bitRead(servoStatus[31], 7) == 1){
-          Serial.print(F("57600 baud, "));
+          Serial.print("57600 baud, ");
         }
         else{
-          Serial.print(F("19200 baud, "));
+          Serial.print("19200 baud, ");
         }
-        Serial.print(F("the power-on reset bit is "));
+        Serial.print("the power-on reset bit is ");
         if(bitRead(servoStatus[31], 6) == 1){
-          Serial.print(F("active, "));
+          Serial.print("active, ");
         }
         else{
-          Serial.print(F("not active, "));
+          Serial.print("not active, ");
         }
-        Serial.print(F("and the servo's status/diagnostic bits are "));
+        Serial.print("and the servo's status/diagnostic bits are ");
         Serial.print(bitRead(servoStatus[31], 3));
         Serial.print(bitRead(servoStatus[31], 2));
         Serial.print(bitRead(servoStatus[31], 1));
         Serial.print(bitRead(servoStatus[31], 0));
-        Serial.println(F("."));
+        Serial.println(".");
         
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -7565,10 +7570,10 @@ void diagLoop() {
       if((command.equalsIgnoreCase("7") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true) or (command.equalsIgnoreCase("5") and widgetServoMenu == true)){ //Get Abort Status
         clearScreen();
         setLEDColor(0, 1);
-        Serial.println(F("Note: The abort status is only meaningful if the controller has aborted an operation. If an abort hasn't happened, the information provided below might not mean anything."));
+        Serial.println("Note: The abort status is only meaningful if the controller has aborted an operation. If an abort hasn't happened, the information provided below might not mean anything.");
         Serial.println();
-        Serial.println(F("Reading the Widget controller's abort status..."));
-        Serial.print(F("Command: "));
+        Serial.println("Reading the Widget controller's abort status...");
+        Serial.print("Command: ");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x11;
         calcWidgetChecksum();
@@ -7577,23 +7582,23 @@ void diagLoop() {
         }
         bool readSuccess = widgetRead(true, true);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while reading the abort status. The following abort information may be incorrect."));
+          Serial.println("WARNING: Errors were encountered while reading the abort status. The following abort information may be incorrect.");
           Serial.println();
         }
         Serial.println();
         Serial.println();
-        Serial.print(F("Full abort status: "));
+        Serial.print("Full abort status: ");
         for(int i = 0; i < 16; i++){
           printDataSpace(blockDataBuffer[i]);
         }
         Serial.println();
-        Serial.print(F("Return address of routine that triggered the abort: "));
+        Serial.print("Return address of routine that triggered the abort: ");
         uint16_t returnAddress = blockDataBuffer[14] << 8;
         returnAddress += blockDataBuffer[15];
         printDataNoSpace(blockDataBuffer[14]);
         printDataNoSpace(blockDataBuffer[15]);
         Serial.println();
-        Serial.print(F("Reason for the abort based on the return address: "));
+        Serial.print("Reason for the abort based on the return address: ");
         bool knownAbort = false;
         int abortIndex = 0;
         for(int i = 0; i < 36; i++){
@@ -7605,7 +7610,7 @@ void diagLoop() {
           }
         }
         if(knownAbort == false){
-          Serial.println(F("Unknown (Maybe the previous command wasn't an abort or you're not using firmware revision 1A45!)"));
+          Serial.println("Unknown (Maybe the previous command wasn't an abort or you're not using firmware revision 1A45!)");
         }
         else{
           for(int i = 1; i < 3; i++){
@@ -7621,7 +7626,7 @@ void diagLoop() {
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -7631,13 +7636,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS or leave this value blank to read the current block: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS or leave this value blank to read the current block: ");
         while(1){
           if(readSerialValue(8, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS or leave this value blank to read the current block: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to read from in the format (CC)CCHHSS or leave this value blank to read the current block: ");
           }
         }
         if(serialBytes[8] == 0x55){
@@ -7645,8 +7650,8 @@ void diagLoop() {
           commandBufferWidget[1] = 0x09;
           calcWidgetChecksum();
           Serial.println();
-          Serial.println(F("Reading from the block that the heads are positioned over..."));
-          Serial.print(F("Command: "));
+          Serial.println("Reading from the block that the heads are positioned over...");
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -7654,7 +7659,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead();
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7677,15 +7682,15 @@ void diagLoop() {
           commandBufferWidget[1] = 0x04;
           calcWidgetChecksum();
           Serial.println();
-          Serial.print(F("Seeking to cylinder "));
+          Serial.print("Seeking to cylinder ");
           printDataNoSpace(commandBufferWidget[2]);
           printDataNoSpace(commandBufferWidget[3]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(commandBufferWidget[4]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(commandBufferWidget[5]);
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -7693,7 +7698,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the seek. The heads might not be in the desired location."));
+            Serial.println("WARNING: Errors were encountered during the seek. The heads might not be in the desired location.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7722,32 +7727,32 @@ void diagLoop() {
             correctSeek = false;
           }
           if(correctSeek == true){
-            Serial.print(F("Widget status confirms that the seek was successful!"));
+            Serial.print("Widget status confirms that the seek was successful!");
           }
           else{
-            Serial.print(F("Error: Widget status says that the seek failed!"));
+            Serial.print("Error: Widget status says that the seek failed!");
           }
           Serial.println();
           Serial.println();
-          Serial.print(F("Now reading from cylinder "));
+          Serial.print("Now reading from cylinder ");
           printDataNoSpace(serialBytes[0]);
           printDataNoSpace(serialBytes[1]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(serialBytes[2]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(serialBytes[3]);
-          Serial.println(F("..."));
+          Serial.println("...");
           commandBufferWidget[0] = 0x12;
           commandBufferWidget[1] = 0x09;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
           Serial.println();
           readSuccess = widgetRead();
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7759,7 +7764,7 @@ void diagLoop() {
           Serial.println();
           printWidgetStatus();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -7769,13 +7774,13 @@ void diagLoop() {
         clearScreen();
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to write the buffer to in the format (CC)CCHHSS or leave this value blank to write the current block: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to write the buffer to in the format (CC)CCHHSS or leave this value blank to write the current block: ");
         while(1){
           if(readSerialValue(8, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to write the buffer to in the format (CC)CCHHSS or leave this value blank to write the current block: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to write the buffer to in the format (CC)CCHHSS or leave this value blank to write the current block: ");
           }
         }
         if(serialBytes[8] == 0x55){
@@ -7783,15 +7788,15 @@ void diagLoop() {
           commandBufferWidget[1] = 0x0B;
           calcWidgetChecksum();
           Serial.println();
-          Serial.println(F("Writing the buffer to the block that the heads are positioned over..."));
-          Serial.print(F("Command: "));
+          Serial.println("Writing the buffer to the block that the heads are positioned over...");
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
           Serial.println();
           bool readSuccess = widgetWrite();
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write operation. The following data may have been written incorrectly."));
+            Serial.println("WARNING: Errors were encountered during the write operation. The following data may have been written incorrectly.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7809,15 +7814,15 @@ void diagLoop() {
           commandBufferWidget[1] = 0x04;
           calcWidgetChecksum();
           Serial.println();
-          Serial.print(F("Seeking to cylinder "));
+          Serial.print("Seeking to cylinder ");
           printDataNoSpace(commandBufferWidget[2]);
           printDataNoSpace(commandBufferWidget[3]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(commandBufferWidget[4]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(commandBufferWidget[5]);
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -7825,7 +7830,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the seek. The heads might not be in the desired location."));
+            Serial.println("WARNING: Errors were encountered during the seek. The heads might not be in the desired location.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7854,32 +7859,32 @@ void diagLoop() {
             correctSeek = false;
           }
           if(correctSeek == true){
-            Serial.print(F("Widget status confirms that the seek was successful!"));
+            Serial.print("Widget status confirms that the seek was successful!");
           }
           else{
-            Serial.print(F("Error: Widget status says that the seek failed!"));
+            Serial.print("Error: Widget status says that the seek failed!");
           }
           Serial.println();
           Serial.println();
-          Serial.print(F("Now writing the buffer to cylinder "));
+          Serial.print("Now writing the buffer to cylinder ");
           printDataNoSpace(serialBytes[0]);
           printDataNoSpace(serialBytes[1]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(serialBytes[2]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(serialBytes[3]);
-          Serial.println(F("..."));
+          Serial.println("...");
           commandBufferWidget[0] = 0x12;
           commandBufferWidget[1] = 0x0B;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
           Serial.println();
           readSuccess = widgetWrite();
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly."));
+            Serial.println("WARNING: Errors were encountered during the write operation. The data may have been written incorrectly.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7889,7 +7894,7 @@ void diagLoop() {
           Serial.println();
           printWidgetStatus();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -7899,23 +7904,23 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         byte sector = 0x00;
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS or leave it blank to stay on the current cylinder and head: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS or leave it blank to stay on the current cylinder and head: ");
         while(1){
           if(readSerialValue(8, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS or leave it blank to stay on the current cylinder and head: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to read the header from in the format (CC)CCHHSS or leave it blank to stay on the current cylinder and head: ");
           }
         }
         if(serialBytes[8] == 0x55){
-          Serial.print(F("Please enter the sector number that you want to read the header from: "));
+          Serial.print("Please enter the sector number that you want to read the header from: ");
           while(1){
             if(readSerialValue(2) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter the sector number that you want to read the header from: "));
+              Serial.print("Please enter the sector number that you want to read the header from: ");
             }
           }
           sector = serialBytes[0];
@@ -7928,15 +7933,15 @@ void diagLoop() {
           commandBufferWidget[1] = 0x04;
           calcWidgetChecksum();
           Serial.println();
-          Serial.print(F("Seeking to cylinder "));
+          Serial.print("Seeking to cylinder ");
           printDataNoSpace(commandBufferWidget[2]);
           printDataNoSpace(commandBufferWidget[3]);
-          Serial.print(F(", head "));
+          Serial.print(", head ");
           printDataNoSpace(commandBufferWidget[4]);
-          Serial.print(F(", and sector "));
+          Serial.print(", and sector ");
           printDataNoSpace(commandBufferWidget[5]);
-          Serial.println(F("..."));
-          Serial.print(F("Command: "));
+          Serial.println("...");
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -7945,7 +7950,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the seek. The heads might not be in the desired location."));
+            Serial.println("WARNING: Errors were encountered during the seek. The heads might not be in the desired location.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -7974,19 +7979,19 @@ void diagLoop() {
             correctSeek = false;
           }
           if(correctSeek == true){
-            Serial.print(F("Widget status confirms that the seek was successful!"));
+            Serial.print("Widget status confirms that the seek was successful!");
             Serial.println();
           }
           else{
-            Serial.print(F("Error: Widget status says that the seek failed!"));
+            Serial.print("Error: Widget status says that the seek failed!");
             Serial.println();
           }
         }
         
         Serial.println();
-        Serial.print(F("Now reading the header for sector "));
+        Serial.print("Now reading the header for sector ");
         printDataNoSpace(sector);
-        Serial.println(F("..."));
+        Serial.println("...");
         uint16_t cylinder = serialBytes[0] << 8;
         cylinder += serialBytes[1];
         byte highCylinder = serialBytes[0];
@@ -7996,14 +8001,14 @@ void diagLoop() {
         commandBufferWidget[1] = 0x0A;
         commandBufferWidget[2] = sector;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 4; i++){
           printDataSpace(commandBufferWidget[i]);
         }
         Serial.println();
         bool readSuccess = widgetRead();
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the read operation. The following header may be incorrect."));
+          Serial.println("WARNING: Errors were encountered during the read operation. The following header may be incorrect.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -8011,61 +8016,61 @@ void diagLoop() {
           setLEDColor(0, 1);
         }
         Serial.println();
-        Serial.print(F("Header Contents: "));
+        Serial.print("Header Contents: ");
         for(int i = 0; i < 13; i++){
           printDataSpace(blockDataBuffer[i]);
         }
         bool headerGood = true;
         Serial.println();
         Serial.println();
-        Serial.println(F("Header Analysis: "));
-        Serial.print(F("Cylinder: "));
+        Serial.println("Header Analysis: ");
+        Serial.print("Cylinder: ");
         printDataNoSpace(blockDataBuffer[0]);
         printDataNoSpace(blockDataBuffer[1]);
         Serial.println();
-        Serial.print(F("Head: "));
+        Serial.print("Head: ");
         printDataNoSpace(blockDataBuffer[2] >> 6);
         Serial.println();
-        Serial.print(F("Sector: "));
+        Serial.print("Sector: ");
         printDataNoSpace(blockDataBuffer[2] & 0b00111111);
         Serial.println();
 
-        Serial.print(F("/Cylinder: "));
+        Serial.print("/Cylinder: ");
         byte notHighCylinder = ~blockDataBuffer[0];
         byte notLowCylinder = ~blockDataBuffer[1];
         printDataNoSpace(blockDataBuffer[3]);
         printDataNoSpace(blockDataBuffer[4]);
         if(blockDataBuffer[3] != notHighCylinder){
           headerGood = false;
-          Serial.print(F(" - Inverted cylinder doesn't match regular cylinder number; should be "));
+          Serial.print(" - Inverted cylinder doesn't match regular cylinder number; should be ");
           printDataNoSpace(~blockDataBuffer[0]);
           printDataNoSpace(~blockDataBuffer[1]);
         }
-        if(blockDataBuffer[4] != notLowCylinder){
+        else if(blockDataBuffer[4] != notLowCylinder){
           headerGood = false;
-          Serial.print(F(" - Inverted cylinder doesn't match regular cylinder number; should be "));
+          Serial.print(" - Inverted cylinder doesn't match regular cylinder number; should be ");
           printDataNoSpace(~blockDataBuffer[0]);
           printDataNoSpace(~blockDataBuffer[1]);
         }
         Serial.println();
-        Serial.print(F("/Head: "));
+        Serial.print("/Head: ");
         printDataNoSpace(blockDataBuffer[5] >> 6);
         if((blockDataBuffer[5] >> 6) != ((~(blockDataBuffer[2] >> 6)) & 0b00000011)){
           headerGood = false;
-          Serial.print(F(" - Inverted head doesn't match regular head number; should be "));
+          Serial.print(" - Inverted head doesn't match regular head number; should be ");
           printDataNoSpace((~(blockDataBuffer[2] >> 6)) & 0b00000011);
         }
         Serial.println();
-        Serial.print(F("/Sector: "));
+        Serial.print("/Sector: ");
         printDataNoSpace(blockDataBuffer[5] & 0b00111111);
         if((blockDataBuffer[5] & 0b00111111) != (~blockDataBuffer[2] & 0b00111111)){
           headerGood = false;
-          Serial.print(F(" - Inverted sector doesn't match regular sector number; should be "));
+          Serial.print(" - Inverted sector doesn't match regular sector number; should be ");
           printDataNoSpace(~blockDataBuffer[2] & 0b00111111);
         }
 
         Serial.println();
-        Serial.print(F("Gap: "));
+        Serial.print("Gap: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(blockDataBuffer[i + 6]);
         }
@@ -8080,15 +8085,15 @@ void diagLoop() {
         }
         Serial.println();
         if(headerGood == true){
-          Serial.print(F("Header integrity looks good!"));
+          Serial.print("Header integrity looks good!");
         }
         else{
-          Serial.print(F("Header seems to be invalid!"));
+          Serial.print("Header seems to be invalid!");
         }
         Serial.println();
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8096,7 +8101,7 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("B") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Write Buffer to Spare Table
         clearScreen();
-        Serial.print(F("WARNING: This command will overwrite the spare table with whatever is in the buffer. If the buffer doesn't contain a spare table, bad things could happen! Do you want to continue (return for yes, 'n' to cancel)? "));
+        Serial.print("WARNING: This command will overwrite the spare table with whatever is in the buffer. If the buffer doesn't contain a spare table, bad things could happen! Do you want to continue (return for yes, 'n' to cancel)? ");
         bool writeSpare = false;
         while(1){
           if(Serial.available()){
@@ -8114,7 +8119,7 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("WARNING: This command will overwrite the spare table with whatever is in the buffer. If the buffer doesn't contain a spare table, bad things could happen! Do you want to continue (return for yes, 'n' to cancel)? "));
+              Serial.print("WARNING: This command will overwrite the spare table with whatever is in the buffer. If the buffer doesn't contain a spare table, bad things could happen! Do you want to continue (return for yes, 'n' to cancel)? ");
             }
           }
         }
@@ -8127,15 +8132,15 @@ void diagLoop() {
           commandBufferWidget[5] = 0x1E;
           calcWidgetChecksum();
           Serial.println();
-          Serial.println(F("Writing the buffer to both spare table copies on the Widget..."));
-          Serial.print(F("Command: "));
+          Serial.println("Writing the buffer to both spare table copies on the Widget...");
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
           Serial.println();
           bool readSuccess = widgetWrite();
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while writing the spare table. The table may not have been written correctly."));
+            Serial.println("WARNING: Errors were encountered while writing the spare table. The table may not have been written correctly.");
             Serial.println();
             setLEDColor(1, 0);
           }
@@ -8145,7 +8150,7 @@ void diagLoop() {
           Serial.println();
           printWidgetStatus();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8154,13 +8159,13 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("C") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Seek
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: "));
+        Serial.print("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: ");
         while(1){
           if(readSerialValue(8) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: "));
+            Serial.print("Please enter the cylinder, head, and sector that you want to seek to in the format (CC)CCHHSS: ");
           }
         }
 
@@ -8171,15 +8176,15 @@ void diagLoop() {
         commandBufferWidget[1] = 0x04;
         calcWidgetChecksum();
         Serial.println();
-        Serial.print(F("Seeking to cylinder "));
+        Serial.print("Seeking to cylinder ");
         printDataNoSpace(commandBufferWidget[2]);
         printDataNoSpace(commandBufferWidget[3]);
-        Serial.print(F(", head "));
+        Serial.print(", head ");
         printDataNoSpace(commandBufferWidget[4]);
-        Serial.print(F(", and sector "));
+        Serial.print(", and sector ");
         printDataNoSpace(commandBufferWidget[5]);
-        Serial.println(F("..."));
-        Serial.print(F("Command: "));
+        Serial.println("...");
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -8187,7 +8192,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false, true);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered during the seek. The heads might not be in the desired location."));
+          Serial.println("WARNING: Errors were encountered during the seek. The heads might not be in the desired location.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -8216,16 +8221,16 @@ void diagLoop() {
           correctSeek = false;
         }
         if(correctSeek == true){
-          Serial.print(F("Widget status confirms that the seek was successful!"));
+          Serial.print("Widget status confirms that the seek was successful!");
         }
         else{
-          Serial.print(F("Error: Widget status says that the seek failed!"));
+          Serial.print("Error: Widget status says that the seek failed!");
         }
         Serial.println();
         setLEDColor(0, 1);
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8241,7 +8246,7 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("E") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Send Restore
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Do you want to send a data restore or a format restore (return for data, 'f' for format)? "));
+        Serial.print("Do you want to send a data restore or a format restore (return for data, 'f' for format)? ");
         bool formatRestore = false;
         while(1){
           if(Serial.available()){
@@ -8256,7 +8261,7 @@ void diagLoop() {
               break;
             }
             else{
-              Serial.print(F("Do you want to send a data restore or a format restore (return for data, 'f' for format)? "));
+              Serial.print("Do you want to send a data restore or a format restore (return for data, 'f' for format)? ");
               while(Serial.available()){
                 Serial.read();
               }
@@ -8265,24 +8270,24 @@ void diagLoop() {
         }
         Serial.println();
         if(formatRestore == false){
-          Serial.println(F("Now performing a data restore on the Widget..."));
+          Serial.println("Now performing a data restore on the Widget...");
           commandBufferWidget[0] = 0x13;
           commandBufferWidget[1] = 0x05;
           commandBufferWidget[2] = 0x40;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 4; i++){
             printDataSpace(commandBufferWidget[i]);
           }
         }
 
         else{
-          Serial.println(F("Now performing a format restore on the Widget..."));
+          Serial.println("Now performing a format restore on the Widget...");
           commandBufferWidget[0] = 0x13;
           commandBufferWidget[1] = 0x05;
           commandBufferWidget[2] = 0x70;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 4; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -8292,19 +8297,19 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while performing the restore. The restore might have failed."));
+          Serial.println("WARNING: Errors were encountered while performing the restore. The restore might have failed.");
           Serial.println();
           setLEDColor(1, 0);
         }
         else{
           setLEDColor(0, 1);
         }
-        Serial.print(F("Restore complete!"));
+        Serial.print("Restore complete!");
         Serial.println();
         setLEDColor(0, 1);
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8315,7 +8320,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         readWidgetStatus(1, 4);
         if(bitRead(driveStatus[0], 7) == 1){
-          Serial.print(F("Recovery is currently on. Do you want to turn it off (return for yes, 'n' for no)? "));
+          Serial.print("Recovery is currently on. Do you want to turn it off (return for yes, 'n' for no)? ");
           bool proceed = false;
           while(1){
             if(Serial.available()){
@@ -8331,7 +8336,7 @@ void diagLoop() {
                 break;
               }
               else{
-                Serial.print(F("Recovery is currently on. Do you want to turn it off (return for yes, 'n' for no)? "));
+                Serial.print("Recovery is currently on. Do you want to turn it off (return for yes, 'n' for no)? ");
                 while(Serial.available()){
                   Serial.read();
                 }
@@ -8340,28 +8345,28 @@ void diagLoop() {
           }
           if(proceed == true){
             Serial.println();
-            Serial.println(F("Turning recovery off..."));
+            Serial.println("Turning recovery off...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x06;
             commandBufferWidget[2] = 0x00;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
             bool readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while turning off recovery. Recovery may still be on."));
+              Serial.println("WARNING: Errors were encountered while turning off recovery. Recovery may still be on.");
               Serial.println();
             }
             Serial.println();
             Serial.println();
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[0], 7) == 0){
-              Serial.println(F("Widget status says that recovery was disabled successfully!"));
+              Serial.println("Widget status says that recovery was disabled successfully!");
             }
             else{
-              Serial.println(F("Error: Widget status says that recovery is still on after disabling it!"));
+              Serial.println("Error: Widget status says that recovery is still on after disabling it!");
             }
             Serial.println();
             readWidgetStatus(1, 0);
@@ -8372,7 +8377,7 @@ void diagLoop() {
           }
         }
         else{
-          Serial.print(F("Recovery is currently off. Do you want to turn it on (return for yes, 'n' for no)? "));
+          Serial.print("Recovery is currently off. Do you want to turn it on (return for yes, 'n' for no)? ");
           bool proceed = false;
           while(1){
             if(Serial.available()){
@@ -8388,7 +8393,7 @@ void diagLoop() {
                 break;
               }
               else{
-                Serial.print(F("Recovery is currently off. Do you want to turn it on (return for yes, 'n' for no)? "));
+                Serial.print("Recovery is currently off. Do you want to turn it on (return for yes, 'n' for no)? ");
                 while(Serial.available()){
                   Serial.read();
                 }
@@ -8397,12 +8402,12 @@ void diagLoop() {
           }
           if(proceed == true){
             Serial.println();
-            Serial.println(F("Turning recovery on..."));
+            Serial.println("Turning recovery on...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x06;
             commandBufferWidget[2] = 0x01;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -8410,15 +8415,15 @@ void diagLoop() {
             Serial.println();
             bool readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while turning on recovery. Recovery may still be off."));
+              Serial.println("WARNING: Errors were encountered while turning on recovery. Recovery may still be off.");
               Serial.println();
             }
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[0], 7) == 1){
-              Serial.println(F("Widget status says that recovery was enabled successfully!"));
+              Serial.println("Widget status says that recovery was enabled successfully!");
             }
             else{
-              Serial.println(F("Error: Widget status says that recovery is still off after enabling it!"));
+              Serial.println("Error: Widget status says that recovery is still off after enabling it!");
             }
             Serial.println();
             readWidgetStatus(1, 0);
@@ -8428,7 +8433,7 @@ void diagLoop() {
             Serial.println();
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8439,36 +8444,36 @@ void diagLoop() {
         setLEDColor(0, 1);
         readWidgetStatus(1, 4);
         if(bitRead(driveStatus[1], 0) == 1){
-          Serial.println(F("Widget status says that auto-offset is already on, so we'll just auto-offset the heads over the current track again..."));
+          Serial.println("Widget status says that auto-offset is already on, so we'll just auto-offset the heads over the current track again...");
         }
         else{
-          Serial.println(F("Enabling auto-offset and auto-offseting the heads over the current track..."));
+          Serial.println("Enabling auto-offset and auto-offseting the heads over the current track...");
         }
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x0C;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferWidget[i]);
         }
         bool readSuccess = widgetRead(false, true);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+          Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
           Serial.println();
         }
         Serial.println();
         Serial.println();
         readWidgetStatus(1, 4);
         if(bitRead(driveStatus[1], 0) == 1){
-          Serial.println(F("Auto-offset complete!"));
+          Serial.println("Auto-offset complete!");
         }
         else{
-          Serial.println(F("Error: Widget status says that the auto-offset is still disabled!"));
+          Serial.println("Error: Widget status says that the auto-offset is still disabled!");
         }
         Serial.println();
         readWidgetStatus(1, 0);
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8477,13 +8482,13 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("H") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //View Track Offsets
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder and head on which you want to view the servo offset in the format CCCCHH or leave it blank to view offsets for all tracks: "));
+        Serial.print("Please enter the cylinder and head on which you want to view the servo offset in the format CCCCHH or leave it blank to view offsets for all tracks: ");
         while(1){
           if(readSerialValue(6, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder and head on which you want to view the servo offset in the format CCCCHH or leave it blank to view offsets for all tracks: "));
+            Serial.print("Please enter the cylinder and head on which you want to view the servo offset in the format CCCCHH or leave it blank to view offsets for all tracks: ");
           }
         }
         bool allTracks = false;
@@ -8492,12 +8497,12 @@ void diagLoop() {
         }
         if(allTracks == false){
           Serial.println();
-          Serial.print(F("Seeking to cylinder "));
+          Serial.print("Seeking to cylinder ");
           printDataNoSpace(serialBytes[0]);
           printDataNoSpace(serialBytes[1]);
-          Serial.print(F(" and head "));
+          Serial.print(" and head ");
           printDataNoSpace(serialBytes[2]);
-          Serial.println(F("..."));
+          Serial.println("...");
           commandBufferWidget[0] = 0x16;
           commandBufferWidget[1] = 0x04;
           commandBufferWidget[2] = serialBytes[0];
@@ -8505,7 +8510,7 @@ void diagLoop() {
           commandBufferWidget[4] = serialBytes[2];
           commandBufferWidget[5] = 0x00;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -8513,7 +8518,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+            Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
             Serial.println();
           }
           readWidgetStatus(1, 2);
@@ -8538,19 +8543,19 @@ void diagLoop() {
             correctSeek = false;
           }
           if(correctSeek == true){
-            Serial.print(F("Seek successful!"));
+            Serial.print("Seek successful!");
           }
           else{
-            Serial.print(F("Error: Widget status says that the seek failed!"));
+            Serial.print("Error: Widget status says that the seek failed!");
           }
           Serial.println();
           Serial.println();
 
-          Serial.println(F("Auto-offsetting over the track three times to make sure we're centered well..."));
+          Serial.println("Auto-offsetting over the track three times to make sure we're centered well...");
           commandBufferWidget[0] = 0x12;
           commandBufferWidget[1] = 0x0C;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -8559,47 +8564,47 @@ void diagLoop() {
           bool offsetWorked = true;
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the first auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the first auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled on the first auto-offset!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled on the first auto-offset!");
             offsetWorked = false;
           }
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the second auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the second auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled on the second auto-offset!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled on the second auto-offset!");
             offsetWorked = false;
           }
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the third auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the third auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled on the third auto-offset!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled on the third auto-offset!");
             offsetWorked = false;
           }
           if(offsetWorked == true){
-            Serial.println(F("Auto-offset complete!"));
+            Serial.println("Auto-offset complete!");
           }
           else{
-            Serial.println(F("Auto-offset failed!"));
+            Serial.println("Auto-offset failed!");
           }
           Serial.println();
-          Serial.println(F("Reading the servo offset..."));
+          Serial.println("Reading the servo offset...");
           commandBufferWidget[0] = 0x13;
           commandBufferWidget[1] = 0x02;
           commandBufferWidget[2] = 0x01;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 4; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -8607,22 +8612,22 @@ void diagLoop() {
           Serial.println();
           readSuccess = widgetRead(true, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+            Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
             Serial.println();
           }
-          Serial.print(F("Offset for cylinder "));
+          Serial.print("Offset for cylinder ");
           printDataNoSpace(serialBytes[0]);
           printDataNoSpace(serialBytes[1]);
-          Serial.print(F(" and head "));
+          Serial.print(" and head ");
           printDataNoSpace(serialBytes[2]);
-          Serial.print(F(" is "));
+          Serial.print(" is ");
           if(bitRead(blockDataBuffer[1], 5) == 0){
-            Serial.print(F("-"));
+            Serial.print("-");
           }
           printDataNoSpace(blockDataBuffer[1] & 0x1F);
-          Serial.print(F("."));
+          Serial.print(".");
           if((blockDataBuffer[1] & 0x1F) >= 0x10){
-            Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+            Serial.print(" This offset is 10 or larger, which is a bit concerning!");
           }
           Serial.println();
           Serial.println();
@@ -8650,7 +8655,7 @@ void diagLoop() {
               calcWidgetChecksum();
               bool readSuccess = widgetRead(false, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+                Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
                 Serial.println();
               }
               readWidgetStatus(1, 2);
@@ -8672,7 +8677,7 @@ void diagLoop() {
               }
           
               if(correctSeek == false){
-                Serial.println(F("Error: Widget status says that the seek failed!"));
+                Serial.println("Error: Widget status says that the seek failed!");
               }
 
               commandBufferWidget[0] = 0x12;
@@ -8680,30 +8685,30 @@ void diagLoop() {
               calcWidgetChecksum();
               readSuccess = widgetRead(false, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                 Serial.println();
               }
               readWidgetStatus(1, 4);
               if(bitRead(driveStatus[1], 0) == 0){
-                Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                Serial.println("Error: Widget status says that auto-offset is still disabled!");
               }
               readSuccess = widgetRead(false, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                 Serial.println();
               }
               readWidgetStatus(1, 4);
               if(bitRead(driveStatus[1], 0) == 0){
-                Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                Serial.println("Error: Widget status says that auto-offset is still disabled!");
               }
               readSuccess = widgetRead(false, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                 Serial.println();
               }
               readWidgetStatus(1, 4);
               if(bitRead(driveStatus[1], 0) == 0){
-                Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                Serial.println("Error: Widget status says that auto-offset is still disabled!");
               }
               commandBufferWidget[0] = 0x13;
               commandBufferWidget[1] = 0x02;
@@ -8711,33 +8716,33 @@ void diagLoop() {
               calcWidgetChecksum();
               readSuccess = widgetRead(true, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+                Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
                 Serial.println();
               }
-              Serial.print(F("Fine offset for cylinder "));
+              Serial.print("Fine offset for cylinder ");
               printDataNoSpace(cylinder >> 8);
               printDataNoSpace(cylinder);
-              Serial.print(F(" and head "));
+              Serial.print(" and head ");
               printDataNoSpace(head);
-              Serial.print(F(" is "));
+              Serial.print(" is ");
               if(bitRead(blockDataBuffer[1], 5) == 0){
-                Serial.print(F("-"));
+                Serial.print("-");
               }
               printDataNoSpace(blockDataBuffer[1] & 0x1F);
-              Serial.print(F("."));
+              Serial.print(".");
               if((blockDataBuffer[1] & 0x1F) >= 0x10){
-                Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+                Serial.print(" This offset is 10 or larger, which is a bit concerning!");
               }
               Serial.println();
             }
           }
           if(abort == true){
             Serial.println();
-            Serial.println(F("Scanning of track fine offsets terminated by keypress."));
+            Serial.println("Scanning of track fine offsets terminated by keypress.");
           }
           Serial.println();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -8750,25 +8755,25 @@ void diagLoop() {
           byte formatOffset = 0x00;
           byte interleave = 0x01;
           Serial.println();
-          Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+          Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
           while(1){
             if(readSerialValue(2, true) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+              Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
             }
           }
           if(serialBytes[2] != 0x55){
             formatOffset = serialBytes[0];
           }
-          Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+          Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
           while(1){
             if(readSerialValue(2, true) == true){
               break;
             }
             else{
-              Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+              Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
             }
           }
           if(serialBytes[2] != 0x55){
@@ -8777,8 +8782,8 @@ void diagLoop() {
           bool abort = false;
           while(abort == false){
             Serial.println();
-            Serial.println(F("Step 1: Soft-resetting the Widget controller..."));
-            Serial.print(F("Command: "));
+            Serial.println("Step 1: Soft-resetting the Widget controller...");
+            Serial.print("Command: ");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x07;
             calcWidgetChecksum();
@@ -8796,54 +8801,54 @@ void diagLoop() {
             calcWidgetChecksum();
             bool readSuccess = widgetRead(false, true);
             if(readSuccess = true){
-              Serial.println(F("Soft-reset complete!"));
+              Serial.println("Soft-reset complete!");
             }
             else{
-              Serial.println(F("Error: Unable to communicate with drive after reset!"));
+              Serial.println("Error: Unable to communicate with drive after reset!");
             }
 
             Serial.println();
-            Serial.println(F("Step 2: Disabling recovery..."));
+            Serial.println("Step 2: Disabling recovery...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x06;
             commandBufferWidget[2] = 0x00;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while turning off recovery. Recovery may still be on."));
+              Serial.println("WARNING: Errors were encountered while turning off recovery. Recovery may still be on.");
               Serial.println();
             }
             Serial.println();
             Serial.println();
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[0], 7) == 0){
-              Serial.println(F("Widget status says that recovery was disabled successfully!"));
+              Serial.println("Widget status says that recovery was disabled successfully!");
             }
             else{
-              Serial.println(F("Error: Widget status says that recovery is still on after disabling it!"));
+              Serial.println("Error: Widget status says that recovery is still on after disabling it!");
             }
             Serial.println();
-            Serial.println(F("Step 3: Checking to see if Widget has passed all self-tests..."));
-            Serial.println(F("Command: 13 01 05 DA"));
+            Serial.println("Step 3: Checking to see if Widget has passed all self-tests...");
+            Serial.println("Command: 13 01 05 DA");
             readWidgetStatus(1, 5);
             Serial.println();
             if((driveStatus[1] != 0x00) or (driveStatus[2] != 0xDB) or (driveStatus[3] != 0xE0)){
-              Serial.println(F("Error: Bad Widget state status! The format might fail!"));
+              Serial.println("Error: Bad Widget state status! The format might fail!");
             }
             else{
-              Serial.println(F("Drive has passed all tests!"));
+              Serial.println("Drive has passed all tests!");
             }
             Serial.println();
-            Serial.println(F("Step 4: Performing a format restore..."));
+            Serial.println("Step 4: Performing a format restore...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x05;
             commandBufferWidget[2] = 0x70;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -8851,14 +8856,14 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track."));
+              Serial.println("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track.");
               Serial.println();
             }
             else{
-              Serial.println(F("Format restore successful!"));
+              Serial.println("Format restore successful!");
               Serial.println();
             }
-            Serial.println(F("Step 5: Seeking to cylinder 0 on head 0..."));
+            Serial.println("Step 5: Seeking to cylinder 0 on head 0...");
             commandBufferWidget[0] = 0x16;
             commandBufferWidget[1] = 0x04;
             commandBufferWidget[2] = 0x00;
@@ -8866,7 +8871,7 @@ void diagLoop() {
             commandBufferWidget[4] = 0x00;
             commandBufferWidget[5] = 0x00;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 7; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -8874,7 +8879,7 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+              Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
               Serial.println();
             }
 
@@ -8900,43 +8905,43 @@ void diagLoop() {
               correctSeek = false;
             }
             if(correctSeek == true){
-              Serial.print(F("Seek successful!"));
+              Serial.print("Seek successful!");
             }
             else{
-              Serial.print(F("Error: Widget status says that the seek failed!"));
+              Serial.print("Error: Widget status says that the seek failed!");
             }
             Serial.println();
             Serial.println();
-            Serial.println(F("Step 6: Performing a trial format on cylinder 0, head 0..."));
+            Serial.println("Step 6: Performing a trial format on cylinder 0, head 0...");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x0C;
             calcWidgetChecksum();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+              Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
               Serial.println();
             }
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[1], 0) == 0){
-              Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+              Serial.println("Error: Widget status says that auto-offset is still disabled!");
             }
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+              Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
               Serial.println();
             }
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[1], 0) == 0){
-              Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+              Serial.println("Error: Widget status says that auto-offset is still disabled!");
             }
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+              Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
               Serial.println();
             }
             readWidgetStatus(1, 4);
             if(bitRead(driveStatus[1], 0) == 0){
-              Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+              Serial.println("Error: Widget status says that auto-offset is still disabled!");
             }
             commandBufferWidget[0] = 0x18;
             commandBufferWidget[1] = 0x0F;
@@ -8947,7 +8952,7 @@ void diagLoop() {
             commandBufferWidget[6] = 0x3C;
             commandBufferWidget[7] = 0x1E;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 9; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -8955,7 +8960,7 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while formatting the track. The format may have failed."));
+              Serial.println("WARNING: Errors were encountered while formatting the track. The format may have failed.");
               Serial.println();
             }
             else{
@@ -8965,26 +8970,26 @@ void diagLoop() {
               calcWidgetChecksum();
               readSuccess = widgetRead(true, true);
               if(readSuccess == 0){
-                Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+                Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
                 Serial.println();
               }
-              Serial.print(F("Format complete! Fine offset is "));
+              Serial.print("Format complete! Fine offset is ");
               if(bitRead(blockDataBuffer[1], 5) == 0){
-                Serial.print(F("-"));
+                Serial.print("-");
               }
               printDataNoSpace(blockDataBuffer[1] & 0x1F);
-              Serial.print(F("."));
+              Serial.print(".");
               if((blockDataBuffer[1] & 0x1F) >= 0x10){
-                Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+                Serial.print(" This offset is 10 or larger, which is a bit concerning!");
               }
               Serial.println();
               Serial.println();
             }
-            Serial.println(F("Step 7: Reading cylinder 0, head 0, and sector 0 to make sure that the format worked..."));
+            Serial.println("Step 7: Reading cylinder 0, head 0, and sector 0 to make sure that the format worked...");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x09;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 3; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -8992,7 +8997,7 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead();
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered during the read operation. The following data may be incorrect."));
+              Serial.println("WARNING: Errors were encountered during the read operation. The following data may be incorrect.");
               Serial.println();
               setLEDColor(1, 0);
             }
@@ -9006,10 +9011,10 @@ void diagLoop() {
               }
             }
             if(trialSuccess == true){
-              Serial.println(F("Readback was successful! Continuing with format."));
+              Serial.println("Readback was successful! Continuing with format.");
             }
             else{
-              Serial.print(F("Readback failed! Do you want to proceed with the rest of the format anyway (return for yes, 'n' to cancel)? "));
+              Serial.print("Readback failed! Do you want to proceed with the rest of the format anyway (return for yes, 'n' to cancel)? ");
               while(1){
                 if(Serial.available()){
                   delay(50);
@@ -9024,7 +9029,7 @@ void diagLoop() {
                     break;
                   }
                   else{
-                    Serial.print(F("Readback failed! Do you want to proceed with the rest of the format anyway (return for yes, 'n' to cancel)? "));
+                    Serial.print("Readback failed! Do you want to proceed with the rest of the format anyway (return for yes, 'n' to cancel)? ");
                     while(Serial.available()){
                       Serial.read();
                     }
@@ -9039,12 +9044,12 @@ void diagLoop() {
             }
             abort = true;
             Serial.println();
-            Serial.println(F("Step 8: Performing another format restore..."));
+            Serial.println("Step 8: Performing another format restore...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x05;
             commandBufferWidget[2] = 0x70;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -9052,14 +9057,14 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track."));
+              Serial.println("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track.");
               Serial.println();
             }
             else{
-              Serial.println(F("Format restore successful!"));
+              Serial.println("Format restore successful!");
               Serial.println();
             }
-            Serial.println(F("Step 9: Formatting every track on the disk..."));
+            Serial.println("Step 9: Formatting every track on the disk...");
             Serial.println();
             byte lowCylinder = 0x00;
             byte highCylinder = 0x00;
@@ -9080,7 +9085,7 @@ void diagLoop() {
                 calcWidgetChecksum();
                 bool readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+                  Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 2);
@@ -9102,7 +9107,7 @@ void diagLoop() {
                 }
             
                 if(correctSeek == false){
-                  Serial.println(F("Error: Widget status says that the seek failed!"));
+                  Serial.println("Error: Widget status says that the seek failed!");
                 }
 
                 commandBufferWidget[0] = 0x12;
@@ -9110,31 +9115,31 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }
               /* 
               readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }*/
                 commandBufferWidget[0] = 0x13;
                 commandBufferWidget[1] = 0x02;
@@ -9142,20 +9147,20 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(true, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+                  Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
                   Serial.println();
                 }
                 
-                Serial.print(F("Now formatting cylinder "));
+                Serial.print("Now formatting cylinder ");
                 printDataNoSpace(highCylinder);
                 printDataNoSpace(lowCylinder);
-                Serial.print(F(" on head "));
+                Serial.print(" on head ");
                 printDataNoSpace(head);
-                Serial.print(F(" with an offset of "));
+                Serial.print(" with an offset of ");
                 printDataNoSpace(formatOffset);
-                Serial.print(F(" and an interleave of "));
+                Serial.print(" and an interleave of ");
                 printDataNoSpace(interleave);
-                Serial.print(F(". "));
+                Serial.print(". ");
                 commandBufferWidget[0] = 0x18;
                 commandBufferWidget[1] = 0x0F;
                 commandBufferWidget[2] = formatOffset;
@@ -9167,27 +9172,27 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while formatting the track. The format may have failed."));
+                  Serial.println("WARNING: Errors were encountered while formatting the track. The format may have failed.");
                   Serial.println();
                 }
 
-                Serial.print(F("Fine offset is "));
+                Serial.print("Fine offset is ");
                 if(bitRead(blockDataBuffer[1], 5) == 0){
-                  Serial.print(F("-"));
+                  Serial.print("-");
                 }
                 printDataNoSpace(blockDataBuffer[1] & 0x1F);
-                Serial.print(F("."));
+                Serial.print(".");
                 if((blockDataBuffer[1] & 0x1F) >= 0x10){
-                  Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+                  Serial.print(" This offset is 10 or larger, which is a bit concerning!");
                 }
                 Serial.println();
               }
             }
             Serial.println();
-            Serial.println(F("Format complete!"));
+            Serial.println("Format complete!");
             Serial.println();
-            Serial.println(F("Step 10: Soft-resetting the Widget controller again..."));
-            Serial.print(F("Command: "));
+            Serial.println("Step 10: Soft-resetting the Widget controller again...");
+            Serial.print("Command: ");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x07;
             calcWidgetChecksum();
@@ -9205,27 +9210,27 @@ void diagLoop() {
             calcWidgetChecksum();
             readSuccess = widgetRead(false, true);
             if(readSuccess = true){
-              Serial.println(F("Soft-reset complete!"));
+              Serial.println("Soft-reset complete!");
             }
             else{
-              Serial.println(F("Error: Unable to communicate with drive after reset!"));
+              Serial.println("Error: Unable to communicate with drive after reset!");
             }
             Serial.println();
-            Serial.println(F("Step 11: Checking to see if Widget has passed all self-tests..."));
-            Serial.println(F("Command: 13 01 05 DA"));
+            Serial.println("Step 11: Checking to see if Widget has passed all self-tests...");
+            Serial.println("Command: 13 01 05 DA");
             readWidgetStatus(1, 5);
             Serial.println();
             if((driveStatus[2] != 0xDB) or (driveStatus[3] != 0xE0)){
-              Serial.println(F("Error: Bad Widget state status! The initialization of the spare table might fail."));
+              Serial.println("Error: Bad Widget state status! The initialization of the spare table might fail.");
             }
             else if(driveStatus[1] != 0x01){
-              Serial.println(F("Drive has passed all tests, but is somehow able to find its spare table. This really weird since we haven't created it yet!"));
+              Serial.println("Drive has passed all tests, but is somehow able to find its spare table. This really weird since we haven't created it yet!");
             }
             else{
-              Serial.println(F("Drive has passed all tests, but can't find its spare table. This is to be expected since we haven't created it yet!"));
+              Serial.println("Drive has passed all tests, but can't find its spare table. This is to be expected since we haven't created it yet!");
             }
             Serial.println();
-            Serial.println(F("Step 12: Initializing the drive's spare table..."));
+            Serial.println("Step 12: Initializing the drive's spare table...");
             commandBufferWidget[0] = 0x18;
             commandBufferWidget[1] = 0x10;
             commandBufferWidget[2] = formatOffset;
@@ -9235,7 +9240,7 @@ void diagLoop() {
             commandBufferWidget[6] = 0x3C;
             commandBufferWidget[7] = 0x1E;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 9; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -9243,15 +9248,15 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while initializing the spare table. The spare table may not have been created correctly."));
+              Serial.println("WARNING: Errors were encountered while initializing the spare table. The spare table may not have been created correctly.");
               Serial.println();
             }
             else{
-              Serial.println(F("Spare table initialization complete!"));
+              Serial.println("Spare table initialization complete!");
             }
             Serial.println();
-            Serial.println(F("Step 13: Soft-resetting the Widget controller yet again..."));
-            Serial.print(F("Command: "));
+            Serial.println("Step 13: Soft-resetting the Widget controller yet again...");
+            Serial.print("Command: ");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x07;
             calcWidgetChecksum();
@@ -9269,31 +9274,31 @@ void diagLoop() {
             calcWidgetChecksum();
             readSuccess = widgetRead(false, true);
             if(readSuccess = true){
-              Serial.println(F("Soft-reset complete!"));
+              Serial.println("Soft-reset complete!");
             }
             else{
-              Serial.println(F("Error: Unable to communicate with drive after reset!"));
+              Serial.println("Error: Unable to communicate with drive after reset!");
             }
             Serial.println();
-            Serial.println(F("Step 14: Checking to see if Widget has passed all self-tests..."));
-            Serial.println(F("Command: 13 01 05 DA"));
+            Serial.println("Step 14: Checking to see if Widget has passed all self-tests...");
+            Serial.println("Command: 13 01 05 DA");
             readWidgetStatus(1, 5);
             Serial.println();
             if((driveStatus[2] != 0xDB) or (driveStatus[3] != 0xE0)){
-              Serial.println(F("Error: Bad Widget state status! The surface scan might fail."));
+              Serial.println("Error: Bad Widget state status! The surface scan might fail.");
             }
             else if(driveStatus[1] != 0x01){
-              Serial.println(F("Drive has passed all tests and is now able to find its newly-created spare table!"));
+              Serial.println("Drive has passed all tests and is now able to find its newly-created spare table!");
             }
             else{
-              Serial.println(F("Drive has passed all tests, but can't find its spare table. Maybe the init spare table command failed?"));
+              Serial.println("Drive has passed all tests, but can't find its spare table. Maybe the init spare table command failed?");
             }
             Serial.println();
-            Serial.println(F("Step 15: Performing a surface scan on the Widget..."));
+            Serial.println("Step 15: Performing a surface scan on the Widget...");
             commandBufferWidget[0] = 0x12;
             commandBufferWidget[1] = 0x13;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 3; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -9301,16 +9306,16 @@ void diagLoop() {
             Serial.println();
             readSuccess = widgetRead(false, false);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while performing the surface scan. The scan may not have succeeded."));
+              Serial.println("WARNING: Errors were encountered while performing the surface scan. The scan may not have succeeded.");
               Serial.println();
             }
             else{
-              Serial.println(F("Surface scan complete! Bad blocks that were found (if any) were entered into the spare table automatically."));
+              Serial.println("Surface scan complete! Bad blocks that were found (if any) were entered into the spare table automatically.");
             }
             Serial.println();
             readWidgetStatus(1, 0);
             printWidgetStatus();
-            Serial.println(F("Low-level format complete!"));
+            Serial.println("Low-level format complete!");
             Serial.println();
             break;
           }
@@ -9318,7 +9323,7 @@ void diagLoop() {
         else{
           Serial.println();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -9352,13 +9357,13 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("J") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Format Track(s)
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Please enter the cylinder and head that you want to format in the format CCCCHH or leave it blank to format all tracks on the disk: "));
+        Serial.print("Please enter the cylinder and head that you want to format in the format CCCCHH or leave it blank to format all tracks on the disk: ");
         while(1){
           if(readSerialValue(6, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter the cylinder and head that you want to format in the format CCCCHH or leave it blank to format all tracks on the disk: "));
+            Serial.print("Please enter the cylinder and head that you want to format in the format CCCCHH or leave it blank to format all tracks on the disk: ");
           }
         }
         byte highCylinder = serialBytes[0];
@@ -9371,25 +9376,25 @@ void diagLoop() {
         }
         byte formatOffset = 0x00;
         byte interleave = 0x01;
-        Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+        Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
         while(1){
           if(readSerialValue(2, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+            Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
           }
         }
         if(serialBytes[2] != 0x55){
           formatOffset = serialBytes[0];
         }
-        Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+        Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
         while(1){
           if(readSerialValue(2, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+            Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
           }
         }
         if(serialBytes[2] != 0x55){
@@ -9399,12 +9404,12 @@ void diagLoop() {
 
         if(allTracks == false){
           Serial.println();
-          Serial.println(F("Performing a data restore before formatting the desired track..."));
+          Serial.println("Performing a data restore before formatting the desired track...");
           commandBufferWidget[0] = 0x13;
           commandBufferWidget[1] = 0x05;
           commandBufferWidget[2] = 0x40;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 4; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -9412,20 +9417,20 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while doing the data restore. The heads may not be positioned over the correct track."));
+            Serial.println("WARNING: Errors were encountered while doing the data restore. The heads may not be positioned over the correct track.");
             Serial.println();
           }
           else{
-            Serial.println(F("Data restore successful!"));
+            Serial.println("Data restore successful!");
             Serial.println();
           }
 
-          Serial.print(F("Now seeking to cylinder "));
+          Serial.print("Now seeking to cylinder ");
           printDataNoSpace(highCylinder);
           printDataNoSpace(lowCylinder);
-          Serial.print(F(" and head "));
+          Serial.print(" and head ");
           printDataNoSpace(head);
-          Serial.println(F("..."));
+          Serial.println("...");
           commandBufferWidget[0] = 0x16;
           commandBufferWidget[1] = 0x04;
           commandBufferWidget[2] = highCylinder;
@@ -9433,7 +9438,7 @@ void diagLoop() {
           commandBufferWidget[4] = head;
           commandBufferWidget[5] = 0x00;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -9441,7 +9446,7 @@ void diagLoop() {
           Serial.println();
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+            Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
             Serial.println();
           }
           serialBytes[0] = highCylinder;
@@ -9469,19 +9474,19 @@ void diagLoop() {
             correctSeek = false;
           }
           if(correctSeek == true){
-            Serial.print(F("Seek successful!"));
+            Serial.print("Seek successful!");
           }
           else{
-            Serial.print(F("Error: Widget status says that the seek failed!"));
+            Serial.print("Error: Widget status says that the seek failed!");
           }
           Serial.println();
           Serial.println();
 
-          Serial.println(F("Auto-offsetting over the track to make sure we're centered well..."));
+          Serial.println("Auto-offsetting over the track to make sure we're centered well...");
           commandBufferWidget[0] = 0x12;
           commandBufferWidget[1] = 0x0C;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 3; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -9490,48 +9495,48 @@ void diagLoop() {
           bool offsetWorked = true;
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled!");
             offsetWorked = false;
           }
           /*
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the second auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the second auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled on the second auto-offset!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled on the second auto-offset!");
             offsetWorked = false;
           }
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered on the third auto-offset. The operation may not have succeeded."));
+            Serial.println("WARNING: Errors were encountered on the third auto-offset. The operation may not have succeeded.");
             Serial.println();
           }
           readWidgetStatus(1, 4);
           if(bitRead(driveStatus[1], 0) == 0){
-            Serial.println(F("Error: Widget status says that the auto-offset is still disabled on the third auto-offset!"));
+            Serial.println("Error: Widget status says that the auto-offset is still disabled on the third auto-offset!");
             offsetWorked = false;
           }*/
           if(offsetWorked == true){
-            Serial.println(F("Auto-offset complete!"));
+            Serial.println("Auto-offset complete!");
           }
           else{
-            Serial.println(F("Auto-offset failed!"));
+            Serial.println("Auto-offset failed!");
           }
           Serial.println();
-          Serial.println(F("Reading the servo fine offset..."));
+          Serial.println("Reading the servo fine offset...");
           commandBufferWidget[0] = 0x13;
           commandBufferWidget[1] = 0x02;
           commandBufferWidget[2] = 0x01;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 4; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -9539,20 +9544,20 @@ void diagLoop() {
           Serial.println();
           readSuccess = widgetRead(true, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+            Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
             Serial.println();
           }
 
-          Serial.print(F("Now formatting cylinder "));
+          Serial.print("Now formatting cylinder ");
           printDataNoSpace(highCylinder);
           printDataNoSpace(lowCylinder);
-          Serial.print(F(" on head "));
+          Serial.print(" on head ");
           printDataNoSpace(head);
-          Serial.print(F(" with an offset of "));
+          Serial.print(" with an offset of ");
           printDataNoSpace(formatOffset);
-          Serial.print(F(" and an interleave of "));
+          Serial.print(" and an interleave of ");
           printDataNoSpace(interleave);
-          Serial.println(F("..."));
+          Serial.println("...");
           commandBufferWidget[0] = 0x18;
           commandBufferWidget[1] = 0x0F;
           commandBufferWidget[2] = formatOffset;
@@ -9562,7 +9567,7 @@ void diagLoop() {
           commandBufferWidget[6] = 0x3C;
           commandBufferWidget[7] = 0x1E;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 9; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -9570,18 +9575,18 @@ void diagLoop() {
           Serial.println();
           readSuccess = widgetRead(false, true);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while formatting the track. The format may have failed."));
+            Serial.println("WARNING: Errors were encountered while formatting the track. The format may have failed.");
             Serial.println();
           }
           else{
-            Serial.print(F("Format successful! Fine offset is "));
+            Serial.print("Format successful! Fine offset is ");
             if(bitRead(blockDataBuffer[1], 5) == 0){
-              Serial.print(F("-"));
+              Serial.print("-");
             }
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
-            Serial.print(F("."));
+            Serial.print(".");
             if((blockDataBuffer[1] & 0x1F) >= 0x10){
-              Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+              Serial.print(" This offset is 10 or larger, which is a bit concerning!");
             }
             Serial.println();
             Serial.println();
@@ -9595,12 +9600,12 @@ void diagLoop() {
             byte lowCylinder = 0x00;
             byte highCylinder = 0x00;
             Serial.println();
-            Serial.println(F("Performing a format restore before formatting the disk..."));
+            Serial.println("Performing a format restore before formatting the disk...");
             commandBufferWidget[0] = 0x13;
             commandBufferWidget[1] = 0x05;
             commandBufferWidget[2] = 0x70;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 4; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -9608,11 +9613,11 @@ void diagLoop() {
             Serial.println();
             bool readSuccess = widgetRead(false, true);
             if(readSuccess == 0){
-              Serial.println(F("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track."));
+              Serial.println("WARNING: Errors were encountered while doing the format restore. The heads may not be positioned over the correct track.");
               Serial.println();
             }
             else{
-              Serial.println(F("Format restore successful!"));
+              Serial.println("Format restore successful!");
               Serial.println();
             }
             readWidgetStatus(1, 3);
@@ -9633,7 +9638,7 @@ void diagLoop() {
                 calcWidgetChecksum();
                 bool readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track."));
+                  Serial.println("WARNING: Errors were encountered while seeking. The heads may not be positioned over the correct track.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 2);
@@ -9655,7 +9660,7 @@ void diagLoop() {
                 }
             
                 if(correctSeek == false){
-                  Serial.println(F("Error: Widget status says that the seek failed!"));
+                  Serial.println("Error: Widget status says that the seek failed!");
                 }
 
                 commandBufferWidget[0] = 0x12;
@@ -9663,31 +9668,31 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }
                 /*
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded."));
+                  Serial.println("WARNING: Errors were encountered while auto-offseting. The operation may not have succeeded.");
                   Serial.println();
                 }
                 readWidgetStatus(1, 4);
                 if(bitRead(driveStatus[1], 0) == 0){
-                  Serial.println(F("Error: Widget status says that auto-offset is still disabled!"));
+                  Serial.println("Error: Widget status says that auto-offset is still disabled!");
                 }*/
                 commandBufferWidget[0] = 0x13;
                 commandBufferWidget[1] = 0x02;
@@ -9695,20 +9700,20 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(true, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect."));
+                  Serial.println("WARNING: Errors were encountered while reading the track offset. The following offset information may be incorrect.");
                   Serial.println();
                 }
               
-                Serial.print(F("Now formatting cylinder "));
+                Serial.print("Now formatting cylinder ");
                 printDataNoSpace(highCylinder);
                 printDataNoSpace(lowCylinder);
-                Serial.print(F(" on head "));
+                Serial.print(" on head ");
                 printDataNoSpace(head);
-                Serial.print(F(" with an offset of "));
+                Serial.print(" with an offset of ");
                 printDataNoSpace(formatOffset);
-                Serial.print(F(" and an interleave of "));
+                Serial.print(" and an interleave of ");
                 printDataNoSpace(interleave);
-                Serial.print(F(". "));
+                Serial.print(". ");
                 commandBufferWidget[0] = 0x18;
                 commandBufferWidget[1] = 0x0F;
                 commandBufferWidget[2] = formatOffset;
@@ -9720,31 +9725,31 @@ void diagLoop() {
                 calcWidgetChecksum();
                 readSuccess = widgetRead(false, true);
                 if(readSuccess == 0){
-                  Serial.println(F("WARNING: Errors were encountered while formatting the track. The format may have failed."));
+                  Serial.println("WARNING: Errors were encountered while formatting the track. The format may have failed.");
                   Serial.println();
                 }
 
-                Serial.print(F("Fine offset is "));
+                Serial.print("Fine offset is ");
                 if(bitRead(blockDataBuffer[1], 5) == 0){
-                  Serial.print(F("-"));
+                  Serial.print("-");
                 }
                 printDataNoSpace(blockDataBuffer[1] & 0x1F);
-                Serial.print(F("."));
+                Serial.print(".");
                 if((blockDataBuffer[1] & 0x1F) >= 0x10){
-                  Serial.print(F(" This offset is 10 or larger, which is a bit concerning!"));
+                  Serial.print(" This offset is 10 or larger, which is a bit concerning!");
                 }
                 Serial.println();
               }
             }
             Serial.println();
-            Serial.println(F("Format complete!"));
+            Serial.println("Format complete!");
             Serial.println();
           }
           else{
             Serial.println();
           }
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -9755,36 +9760,36 @@ void diagLoop() {
         setLEDColor(0, 1);
         byte formatOffset = 0x00;
         byte interleave = 0x01;
-        Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+        Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
         while(1){
           if(readSerialValue(2, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter your desired 1-byte format offset or press return to use the default of 00: "));
+            Serial.print("Please enter your desired 1-byte format offset or press return to use the default of 00: ");
           }
         }
         if(serialBytes[2] != 0x55){
           formatOffset = serialBytes[0];
         }
-        Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+        Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
         while(1){
           if(readSerialValue(2, true) == true){
             break;
           }
           else{
-            Serial.print(F("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): "));
+            Serial.print("Please enter your desired 1-byte interleave value or press return to use the default of 01 (meaning 1:2 interleave): ");
           }
         }
         if(serialBytes[2] != 0x55){
           interleave = serialBytes[0];
         }
         Serial.println();
-        Serial.print(F("Now initializing the Widget's spare tables with a format offset of "));
+        Serial.print("Now initializing the Widget's spare tables with a format offset of ");
         printDataNoSpace(formatOffset);
-        Serial.print(F(" and an interleave of "));
+        Serial.print(" and an interleave of ");
         printDataNoSpace(interleave);
-        Serial.println(F("..."));
+        Serial.println("...");
         commandBufferWidget[0] = 0x18;
         commandBufferWidget[1] = 0x10;
         commandBufferWidget[2] = formatOffset;
@@ -9794,7 +9799,7 @@ void diagLoop() {
         commandBufferWidget[6] = 0x3C;
         commandBufferWidget[7] = 0x1E;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 9; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -9802,15 +9807,15 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false, true);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while initializing the spare table. The spare table may not have been created correctly."));
+          Serial.println("WARNING: Errors were encountered while initializing the spare table. The spare table may not have been created correctly.");
           Serial.println();
         }
         else{
-          Serial.println(F("Spare table initialization complete!"));
+          Serial.println("Spare table initialization complete!");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -9819,11 +9824,11 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("L") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Scan
         clearScreen();
         setLEDColor(0, 0);
-        Serial.println(F("Performing a surface scan on the Widget..."));
+        Serial.println("Performing a surface scan on the Widget...");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x13;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 3; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -9831,15 +9836,15 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false, false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while performing the surface scan. The scan may not have succeeded."));
+          Serial.println("WARNING: Errors were encountered while performing the surface scan. The scan may not have succeeded.");
           Serial.println();
         }
         else{
-          Serial.println(F("Surface scan complete! Bad blocks that were found (if any) were entered into the spare table automatically."));
+          Serial.println("Surface scan complete! Bad blocks that were found (if any) were entered into the spare table automatically.");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         flushInput();
         while(!Serial.available());
         flushInput();
@@ -9847,8 +9852,8 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("M") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Park Heads
         clearScreen();
-        Serial.println(F("Parking the Widget's heads..."));
-        Serial.print(F("Command: "));
+        Serial.println("Parking the Widget's heads...");
+        Serial.print("Command: ");
         commandBufferWidget[0] = 0x12;
         commandBufferWidget[1] = 0x08;
         calcWidgetChecksum();
@@ -9864,13 +9869,13 @@ void diagLoop() {
         calcWidgetChecksum();
         widgetRead(false, true);
         if(bitRead(driveStatus[1], 4) == true){
-          Serial.println(F("Heads successfully parked!"));
+          Serial.println("Heads successfully parked!");
         }
         else{
-          Serial.println(F("Error: Widget internal status says that the heads were NOT parked!"));
+          Serial.println("Error: Widget internal status says that the heads were NOT parked!");
         }
         Serial.println();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -9879,7 +9884,7 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("N") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == true){ //Send Custom Widget Command
         clearScreen();
-        Serial.print(F("Please enter the Widget command that you want to send. Leave off the checksum; it will be added automatically: "));
+        Serial.print("Please enter the Widget command that you want to send. Leave off the checksum; it will be added automatically: ");
         char charInput[2128];
         byte hexInput[1064];
         unsigned int charIndex = 0;
@@ -9905,7 +9910,7 @@ void diagLoop() {
               break;
             }
             else if(inByte == '\r' and goodInput == false){
-              Serial.print(F("Please enter the Widget command that you want to send. Leave off the checksum; it will be added automatically: "));
+              Serial.print("Please enter the Widget command that you want to send. Leave off the checksum; it will be added automatically: ");
               charIndex = 0;
               goodInput = true;
             }
@@ -9922,9 +9927,9 @@ void diagLoop() {
         }
         calcWidgetChecksum();
         Serial.println();
-        Serial.println(F("Read commands return data and the status bytes are read before the data is sent to the ESProFile."));
-        Serial.println(F("Write commands don't return data and the status bytes are read after data has been written to the drive."));
-        Serial.print(F("Is this a read command (r) or a write command (w)? "));
+        Serial.println("Read commands return data and the status bytes are read before the data is sent to ESProFile.");
+        Serial.println("Write commands don't return data and the status bytes are read after data has been written to the drive.");
+        Serial.print("Is this a read command (r) or a write command (w)? ");
         while(1){
           if(Serial.available()) {
             delay(50);
@@ -9937,12 +9942,12 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Is this a read command (r) or a write command (w)? "));
+              Serial.print("Is this a read command (r) or a write command (w)? ");
             }
           }
         }
         Serial.println();
-        Serial.print(F("Executing command: "));
+        Serial.print("Executing command: ");
         for(int i = 0; i <= (commandBufferWidget[0] & 0x0F); i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -9952,7 +9957,7 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(true, false);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the operation. The following data may be incorrect."));
+            Serial.println("WARNING: Errors were encountered during the operation. The following data may be incorrect.");
             Serial.println();
           }
           printRawData();
@@ -9964,12 +9969,12 @@ void diagLoop() {
           Serial.println();
           bool writeSuccess = widgetWrite(false);
           if(writeSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered during the operation."));
+            Serial.println("WARNING: Errors were encountered during the operation.");
             Serial.println();
           }
           printWidgetStatus();
         }
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -9986,7 +9991,7 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("7") and widgetServoMenu == true){ //Recal
         clearScreen();
         setLEDColor(0, 1);
-        Serial.print(F("Do you want to perform a data recal or a format recal (return for data, 'f' for format)? "));
+        Serial.print("Do you want to perform a data recal or a format recal (return for data, 'f' for format)? ");
         bool formatRecal = false;
         while(1){
           if(Serial.available()){
@@ -10004,7 +10009,7 @@ void diagLoop() {
               while(Serial.available()){
                 Serial.read();
               }
-              Serial.print(F("Do you want to perform a data recal or a format recal (return for data, 'f' for format)? "));
+              Serial.print("Do you want to perform a data recal or a format recal (return for data, 'f' for format)? ");
               while(Serial.available()){
                 Serial.read();
               }
@@ -10013,7 +10018,7 @@ void diagLoop() {
         }
         Serial.println();
         if(formatRecal == false){
-          Serial.println(F("Now performing a data recal on the Widget servo..."));
+          Serial.println("Now performing a data recal on the Widget servo...");
           commandBufferWidget[0] = 0x16;
           commandBufferWidget[1] = 0x03;
           commandBufferWidget[2] = 0x40;
@@ -10021,13 +10026,13 @@ void diagLoop() {
           commandBufferWidget[4] = 0x00;
           commandBufferWidget[5] = 0x80;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
         }
         else{
-          Serial.println(F("Now performing a format recal on the Widget servo..."));
+          Serial.println("Now performing a format recal on the Widget servo...");
           commandBufferWidget[0] = 0x16;
           commandBufferWidget[1] = 0x03;
           commandBufferWidget[2] = 0x70;
@@ -10035,7 +10040,7 @@ void diagLoop() {
           commandBufferWidget[4] = 0x00;
           commandBufferWidget[5] = 0x80;
           calcWidgetChecksum();
-          Serial.print(F("Command: "));
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -10044,18 +10049,18 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while performing the recal. The recal might have failed."));
+          Serial.println("WARNING: Errors were encountered while performing the recal. The recal might have failed.");
           Serial.println();
           setLEDColor(1, 0);
         }
         else{
-          Serial.println(F("Recal command successfully sent to servo!"));
+          Serial.println("Recal command successfully sent to servo!");
           setLEDColor(0, 1);
         }
         setLEDColor(0, 1);
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -10064,7 +10069,7 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("8") and widgetServoMenu == true){ //Access
         clearScreen();
-        Serial.print(F("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? "));
+        Serial.print("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? ");
         while(1){
           if(readSerialValue(6, false, true) == true){
             if(serialBytes[1] == (serialBytes[1] & 0b00000011)){
@@ -10072,7 +10077,7 @@ void diagLoop() {
             }
           }
           else{
-            Serial.print(F("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? "));
+            Serial.print("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? ");
           }
         }
         Serial.println();
@@ -10091,18 +10096,18 @@ void diagLoop() {
         commandBufferWidget[4] = 0x00;
         commandBufferWidget[5] = 0x80;
         calcWidgetChecksum();
-        Serial.print(F("Now moving the heads "));
+        Serial.print("Now moving the heads ");
         printDataNoSpace(highSteps);
         printDataNoSpace(lowSteps);
-        Serial.print(F(" tracks "));
+        Serial.print(" tracks ");
         if(serialBytes[0] == '-'){
-          Serial.print(F("away from"));
+          Serial.print("away from");
         }
         else{
-          Serial.print(F("towards"));
+          Serial.print("towards");
         }
-        Serial.println(F(" the spindle..."));
-        Serial.print(F("Command: "));
+        Serial.println(" the spindle...");
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -10110,17 +10115,17 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while performing the access operation. The access might have failed."));
+          Serial.println("WARNING: Errors were encountered while performing the access operation. The access might have failed.");
           Serial.println();
           setLEDColor(1, 0);
         }
         else{
           setLEDColor(0, 1);
-          Serial.println(F("Access command successfully sent to servo!"));
+          Serial.println("Access command successfully sent to servo!");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -10129,7 +10134,7 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("9") and widgetServoMenu == true){ //Access With Offset
         clearScreen();
-        Serial.print(F("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? "));
+        Serial.print("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? ");
         while(1){
           if(readSerialValue(6, false, true) == true){
             if(serialBytes[1] == (serialBytes[1] & 0b00000011)){
@@ -10137,7 +10142,7 @@ void diagLoop() {
             }
           }
           else{
-            Serial.print(F("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? "));
+            Serial.print("How many tracks to you want to move relative to your current location (add a '-' sign to move to lower tracks and no sign to move towards higher tracks)? ");
           }
         }
         Serial.println();
@@ -10154,24 +10159,24 @@ void diagLoop() {
         commandBufferWidget[2] += highSteps;
         commandBufferWidget[3] = lowSteps;
         commandBufferWidget[5] = 0x80;
-        Serial.print(F("The current fine offset DAC value is "));
+        Serial.print("The current fine offset DAC value is ");
         readWidgetStatus(2, 1);
         if(bitRead(blockDataBuffer[1], 5) == 0){
-          Serial.print(F("-"));
+          Serial.print("-");
           printDataNoSpace(blockDataBuffer[1] & 0x1F);
         }
         else{
           printDataNoSpace(blockDataBuffer[1] & 0x1F);
         }
-        Serial.println(F("."));
+        Serial.println(".");
         Serial.println();
-        Serial.print(F("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: "));
+        Serial.print("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: ");
         while(1){
           if((readSerialValue(2, true) == true) and ((serialBytes[0] == 0x00) or (serialBytes[0] == 0x01))){
             break;
           }
           else{
-            Serial.print(F("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: "));
+            Serial.print("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: ");
           }
         }
         if(serialBytes[2] != 0x55){
@@ -10185,12 +10190,12 @@ void diagLoop() {
         }
         else{
           Serial.println();
-          Serial.println(F("Note: The offset command is weird in that the offset you specify is relative to the ends of the offset range, not the middle."));
-          Serial.println(F("So an offset of 5 would take the positive end of the range (1F) and subtract 5, making the new offset 1A."));
-          Serial.println(F("Likewise, an offset of -3 would take the negative end of the range (-1F) and add 3, making the new offset -1C."));
-          Serial.println(F("To get the offset to zero, use either an offset of -1F or an offset of 1F."));
+          Serial.println("Note: The offset command is weird in that the offset you specify is relative to the ends of the offset range, not the middle.");
+          Serial.println("So an offset of 5 would take the positive end of the range (1F) and subtract 5, making the new offset 1A.");
+          Serial.println("Likewise, an offset of -3 would take the negative end of the range (-1F) and add 3, making the new offset -1C.");
+          Serial.println("To get the offset to zero, use either an offset of -1F or an offset of 1F.");
           Serial.println();
-          Serial.print(F("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? "));
+          Serial.print("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? ");
           while(1){
             if(readSerialValue(4, false, true) == true){
               if(serialBytes[1] == (serialBytes[1] & 0b00011111)){
@@ -10198,7 +10203,7 @@ void diagLoop() {
               }
             }
             else{
-              Serial.print(F("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? "));
+              Serial.print("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? ");
             }
           }
           Serial.println();
@@ -10212,36 +10217,36 @@ void diagLoop() {
           commandBufferWidget[4] += offset;
         }
         calcWidgetChecksum();
-        Serial.print(F("Now moving the heads "));
+        Serial.print("Now moving the heads ");
         printDataNoSpace(highSteps);
         printDataNoSpace(lowSteps);
-        Serial.print(F(" tracks "));
+        Serial.print(" tracks ");
         if(bitRead(commandBufferWidget[2], 2) == 0){
-          Serial.print(F("away from"));
+          Serial.print("away from");
         }
         else{
-          Serial.print(F("towards"));
+          Serial.print("towards");
         }
-        Serial.print(F(" the spindle and "));
+        Serial.print(" the spindle and ");
         if(commandBufferWidget[4] == 0x40){
-          Serial.println(F("enabling auto-offset..."));
+          Serial.println("enabling auto-offset...");
         }
         else if(commandBufferWidget[4] == 0x00){
-          Serial.println(F("disabling auto-offset..."));
+          Serial.println("disabling auto-offset...");
         }
         else{
-          Serial.print(F("offsetting "));
+          Serial.print("offsetting ");
           printDataNoSpace(commandBufferWidget[4] & 0b00011111);
-          Serial.print(F(" steps "));
+          Serial.print(" steps ");
           if(serialBytes[0] == '-'){
-            Serial.print(F("away from the previous "));
+            Serial.print("away from the previous ");
           }
           else{
-            Serial.print(F("away from the next "));
+            Serial.print("away from the next ");
           }
-          Serial.println(F("track..."));
+          Serial.println("track...");
         }
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -10249,27 +10254,27 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while performing the Access With Offset operation. The operation might have failed."));
+          Serial.println("WARNING: Errors were encountered while performing the Access With Offset operation. The operation might have failed.");
           Serial.println();
           setLEDColor(1, 0);
         }
         else{
           setLEDColor(0, 1);
-          Serial.println(F("Access With Offset command successfully sent to servo!"));
-          Serial.print(F("The new fine offset DAC value is "));
+          Serial.println("Access With Offset command successfully sent to servo!");
+          Serial.print("The new fine offset DAC value is ");
           readWidgetStatus(2, 1);
           if(bitRead(blockDataBuffer[1], 5) == 0){
-            Serial.print(F("-"));
+            Serial.print("-");
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
           else{
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
-          Serial.println(F("."));
+          Serial.println(".");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -10278,30 +10283,30 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("A") and widgetServoMenu == true){ //Offset
         clearScreen();
-        Serial.print(F("The current fine offset DAC value is "));
+        Serial.print("The current fine offset DAC value is ");
         readWidgetStatus(2, 1);
         if(bitRead(blockDataBuffer[1], 5) == 0){
-          Serial.print(F("-"));
+          Serial.print("-");
           printDataNoSpace(blockDataBuffer[1] & 0x1F);
         }
         else{
           printDataNoSpace(blockDataBuffer[1] & 0x1F);
         }
-        Serial.println(F("."));
+        Serial.println(".");
         Serial.println();
-        Serial.print(F("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: "));
+        Serial.print("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: ");
         while(1){
           if((readSerialValue(2, true) == true) and ((serialBytes[0] == 0x00) or (serialBytes[0] == 0x01))){
             break;
           }
           else{
-            Serial.print(F("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: "));
+            Serial.print("Enter a 1 or 0 to enable or disable auto-offset or leave this blank to specify a manual offset: ");
           }
         }
         Serial.println();
         if(serialBytes[2] != 0x55){
           if(serialBytes[0] == 0x01){
-            Serial.println(F("Telling the servo to enable auto-offset..."));
+            Serial.println("Telling the servo to enable auto-offset...");
             commandBufferWidget[0] = 0x16;
             commandBufferWidget[1] = 0x03;
             commandBufferWidget[2] = 0x10;
@@ -10309,13 +10314,13 @@ void diagLoop() {
             commandBufferWidget[4] = 0x40;
             commandBufferWidget[5] = 0x80;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 7; i++){
               printDataSpace(commandBufferWidget[i]);
             }
           }
           else{
-            Serial.println(F("Telling the servo to disable auto-offset..."));
+            Serial.println("Telling the servo to disable auto-offset...");
             commandBufferWidget[0] = 0x16;
             commandBufferWidget[1] = 0x03;
             commandBufferWidget[2] = 0x10;
@@ -10323,7 +10328,7 @@ void diagLoop() {
             commandBufferWidget[4] = 0x00;
             commandBufferWidget[5] = 0x80;
             calcWidgetChecksum();
-            Serial.print(F("Command: "));
+            Serial.print("Command: ");
             for(int i = 0; i < 7; i++){
               printDataSpace(commandBufferWidget[i]);
             }
@@ -10332,37 +10337,37 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while sending the offset command. The command might not have executed successfully."));
+            Serial.println("WARNING: Errors were encountered while sending the offset command. The command might not have executed successfully.");
             Serial.println();
             setLEDColor(1, 0);
           }
           else{
             setLEDColor(0, 1);
             if(serialBytes[0] == 0x01){
-              Serial.println(F("Enable auto-offset command successfully sent to servo!"));
+              Serial.println("Enable auto-offset command successfully sent to servo!");
             }
             else{
-              Serial.println(F("Disable auto-offset command successfully sent to servo!"));
+              Serial.println("Disable auto-offset command successfully sent to servo!");
             }
           }
-          Serial.print(F("The new fine offset DAC value is "));
+          Serial.print("The new fine offset DAC value is ");
           readWidgetStatus(2, 1);
           if(bitRead(blockDataBuffer[1], 5) == 0){
-            Serial.print(F("-"));
+            Serial.print("-");
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
           else{
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
-          Serial.println(F("."));
+          Serial.println(".");
         }
         else{
-          Serial.println(F("Note: The offset command is weird in that the offset you specify is relative to the ends of the offset range, not the middle."));
-          Serial.println(F("So an offset of 5 would take the positive end of the range (1F) and subtract 5, making the new offset 1A."));
-          Serial.println(F("Likewise, an offset of -3 would take the negative end of the range (-1F) and add 3, making the new offset -1C."));
-          Serial.println(F("To get the offset to zero, use either an offset of -1F or an offset of 1F."));
+          Serial.println("Note: The offset command is weird in that the offset you specify is relative to the ends of the offset range, not the middle.");
+          Serial.println("So an offset of 5 would take the positive end of the range (1F) and subtract 5, making the new offset 1A.");
+          Serial.println("Likewise, an offset of -3 would take the negative end of the range (-1F) and add 3, making the new offset -1C.");
+          Serial.println("To get the offset to zero, use either an offset of -1F or an offset of 1F.");
           Serial.println();
-          Serial.print(F("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? "));
+          Serial.print("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? ");
           while(1){
             if(readSerialValue(4, false, true) == true){
               if(serialBytes[1] == (serialBytes[1] & 0b00011111)){
@@ -10370,7 +10375,7 @@ void diagLoop() {
               }
             }
             else{
-              Serial.print(F("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? "));
+              Serial.print("How many steps do you want to offset by (add a '-' sign to start the offset at the previous track and no sign to start the offset at the next track)? ");
             }
           }
           Serial.println();
@@ -10388,17 +10393,17 @@ void diagLoop() {
           commandBufferWidget[4] += offset;
           commandBufferWidget[5] = 0x80;
           calcWidgetChecksum();
-          Serial.print(F("Now offsetting "));
+          Serial.print("Now offsetting ");
           printDataNoSpace(offset);
-          Serial.print(F(" steps "));
+          Serial.print(" steps ");
           if(serialBytes[0] == '-'){
-            Serial.print(F("away from the previous "));
+            Serial.print("away from the previous ");
           }
           else{
-            Serial.print(F("away from the next "));
+            Serial.print("away from the next ");
           }
-          Serial.println(F("track..."));
-          Serial.print(F("Command: "));
+          Serial.println("track...");
+          Serial.print("Command: ");
           for(int i = 0; i < 7; i++){
             printDataSpace(commandBufferWidget[i]);
           }
@@ -10406,29 +10411,29 @@ void diagLoop() {
           Serial.println();
           bool readSuccess = widgetRead(false);
           if(readSuccess == 0){
-            Serial.println(F("WARNING: Errors were encountered while performing the offset operation. The offset might have failed."));
+            Serial.println("WARNING: Errors were encountered while performing the offset operation. The offset might have failed.");
             Serial.println();
             setLEDColor(1, 0);
           }
           else{
             setLEDColor(0, 1);
-            Serial.println(F("Offset command successfully sent to servo!"));
+            Serial.println("Offset command successfully sent to servo!");
           }
-          Serial.print(F("The new fine offset DAC value is "));
+          Serial.print("The new fine offset DAC value is ");
           readWidgetStatus(2, 1);
           if(bitRead(blockDataBuffer[1], 5) == 0){
-            Serial.print(F("-"));
+            Serial.print("-");
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
           else{
             printDataNoSpace(blockDataBuffer[1] & 0x1F);
           }
-          Serial.println(F("."));
+          Serial.println(".");
         }
         Serial.println();
         readWidgetStatus(1, 0);
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -10437,9 +10442,9 @@ void diagLoop() {
 
       else if(command.equalsIgnoreCase("B") and widgetServoMenu == true){ //Home
         clearScreen();
-        Serial.println(F("Note: The home command sometimes sets the Operation Failed and Controller Aborted Last Operation status bits for some reason. Ignore this; everything's fine!"));
+        Serial.println("Note: The home command sometimes sets the Operation Failed and Controller Aborted Last Operation status bits for some reason. Ignore this; everything's fine!");
         Serial.println();
-        Serial.println(F("Telling the servo to home the heads..."));
+        Serial.println("Telling the servo to home the heads...");
         commandBufferWidget[0] = 0x16;
         commandBufferWidget[1] = 0x03;
         commandBufferWidget[2] = 0xC0;
@@ -10447,7 +10452,7 @@ void diagLoop() {
         commandBufferWidget[4] = 0x00;
         commandBufferWidget[5] = 0x80;
         calcWidgetChecksum();
-        Serial.print(F("Command: "));
+        Serial.print("Command: ");
         for(int i = 0; i < 7; i++){
           printDataSpace(commandBufferWidget[i]);
         }
@@ -10455,7 +10460,7 @@ void diagLoop() {
         Serial.println();
         bool readSuccess = widgetRead(false);
         if(readSuccess == 0){
-          Serial.println(F("WARNING: Errors were encountered while homing the heads. The heads may not be homed."));
+          Serial.println("WARNING: Errors were encountered while homing the heads. The heads may not be homed.");
           Serial.println();
           setLEDColor(1, 0);
         }
@@ -10464,14 +10469,14 @@ void diagLoop() {
         }
         readWidgetStatus(2, 1);
         if(bitRead(blockDataBuffer[0], 0) == 1){
-          Serial.println(F("Servo status reports that the heads have been homed!"));
+          Serial.println("Servo status reports that the heads have been homed!");
         }
         else{
-          Serial.println(F("Error: Servo status says that the heads failed to home properly."));
+          Serial.println("Error: Servo status says that the heads failed to home properly.");
         }
         Serial.println();
         printWidgetStatus();
-        Serial.print(F("Press return to continue..."));
+        Serial.print("Press return to continue...");
         setLEDColor(0, 1);
         flushInput();
         while(!Serial.available());
@@ -10557,7 +10562,7 @@ void readWidgetStatus(byte whichStatus, byte statusLongwordNumber){
   }
   if(readSuccess == 0){
     Serial.println();
-    Serial.println(F("WARNING: Errors were encountered while reading the following status longword."));
+    Serial.println("WARNING: Errors were encountered while reading a Widget status longword.");
     Serial.println();
   }
   for(int i = 0; i < 14; i++){
@@ -10567,7 +10572,7 @@ void readWidgetStatus(byte whichStatus, byte statusLongwordNumber){
 
 void confirm(){
   confirmOperation = false;
-  Serial.print(F("WARNING: This operation will destroy all data on your drive! Are you sure you want to continue (return for yes, 'n' to cancel)? "));
+  Serial.print("WARNING: This operation will destroy all data on your drive! Are you sure you want to continue (return for yes, 'n' to cancel)? ");
   while(1){
     if(Serial.available()){
       delay(50);
@@ -10584,7 +10589,7 @@ void confirm(){
         while(Serial.available()){
           Serial.read();
         }
-        Serial.print(F("WARNING: This operation will destroy all data on your drive! Are you sure you want to continue (return for yes, 'n' to cancel)? "));
+        Serial.print("WARNING: This operation will destroy all data on your drive! Are you sure you want to continue (return for yes, 'n' to cancel)? ");
       }
     }
 
@@ -10605,7 +10610,7 @@ void startReceipt(){
     }
     if(millis() - originalStart >= 30000){
       Serial.println();
-      Serial.println(F("Operation failed - XMODEM sender never started!"));
+      Serial.println("Operation failed - XMODEM sender never started!");
       done = 1;
       failed = true;
       break;
@@ -10627,7 +10632,7 @@ void receivePacket(){
   while(!Serial.available() and done == 0){
     if(millis() - start >= 5000){
       delay(2000);
-      Serial.println(F("Operation failed - XMODEM timeout error!"));
+      Serial.println("Operation failed - XMODEM timeout error!");
       done = 1;
       failed = true;
       break;
@@ -10673,8 +10678,8 @@ void receivePacket(){
 
 void getDriveType(){
   setLEDColor(0, 1);
-  Serial.println(F("Reading spare table to determine drive size..."));
-  Serial.println(F("Command: 00 FF FF FF 0A 03"));
+  Serial.println("Reading spare table to determine drive size...");
+  Serial.println("Command: 00 FF FF FF 0A 03");
   byte oldblockDataBuffer[532];
   for(int i = 0; i < 532; i++){
     oldblockDataBuffer[i] = blockDataBuffer[i];
@@ -10682,22 +10687,22 @@ void getDriveType(){
   profileRead(0xFF, 0xFF, 0xFF);
   setLEDColor(0, 1);
   if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x00){
-    Serial.print(F("Drive is a 5MB ProFile with "));
+    Serial.print("Drive is a 5MB ProFile with ");
   }
   else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x10){
-    Serial.print(F("Drive is a 10MB ProFile with "));
+    Serial.print("Drive is a 10MB ProFile with ");
   }
   else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x00){
-    Serial.print(F("Drive is a 10MB Widget with "));
+    Serial.print("Drive is a 10MB Widget with ");
   }
   else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x10){
-    Serial.print(F("Drive is a 20MB Widget with "));
+    Serial.print("Drive is a 20MB Widget with ");
   }
   else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x20){
-    Serial.print(F("Drive is a 40MB Widget with "));
+    Serial.print("Drive is a 40MB Widget with ");
   }
   else{
-    Serial.print(F("Drive type is unknown with "));
+    Serial.print("Drive type is unknown with ");
   }
   //byte driveSize[3];
   for(int i = 18; i < 21; i++){
@@ -10705,14 +10710,14 @@ void getDriveType(){
     Serial.print(blockDataBuffer[i]&0x0F, HEX);
     driveSize[i - 18] = blockDataBuffer[i];
   }
-  Serial.print(F(" blocks. Is this correct (return for yes, 'n' for no)? "));
+  Serial.print(" blocks. Is this correct (return for yes, 'n' for no)? ");
   while(1){
     if(Serial.available()){
       delay(50);
       userInput = Serial.read();
       flushInput();
       if(userInput == 'n'){
-        Serial.print(F("Please enter the size of your drive in blocks: "));
+        Serial.print("Please enter the size of your drive in blocks: ");
         while(1){
           if(readSerialValue(6) == true and serialBytes[0] % 2 == 0){
             driveSize[0] = serialBytes[0];
@@ -10721,7 +10726,7 @@ void getDriveType(){
             break;
           }
           else{
-            Serial.print(F("Please enter the size of your drive in blocks: "));
+            Serial.print("Please enter the size of your drive in blocks: ");
           }
         }
         break;
@@ -10731,23 +10736,23 @@ void getDriveType(){
       }
       else{
         if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x00){
-          Serial.print(F("Drive is a 5MB ProFile with "));
+          Serial.print("Drive is a 5MB ProFile with ");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x00 and blockDataBuffer[15] == 0x10){
-          Serial.print(F("Drive is a 10MB ProFile with "));
+          Serial.print("Drive is a 10MB ProFile with ");
         }
         else if(blockDataBuffer[13] == 0x00 and blockDataBuffer[14] == 0x01 and blockDataBuffer[15] == 0x00){
-          Serial.print(F(" Drive is a 10MB Widget with "));
+          Serial.print(" Drive is a 10MB Widget with ");
         }
         else{
-          Serial.print(F(" (Unknown Drive Type)"));
+          Serial.print(" (Unknown Drive Type)");
         }
         for(int i = 18; i < 21; i++){
           Serial.print(blockDataBuffer[i]>>4, HEX);
           Serial.print(blockDataBuffer[i]&0x0F, HEX);
           driveSize[i - 18] = blockDataBuffer[i];
         }
-        Serial.print(F(" blocks. Is this correct (return for yes, 'n' for no)? "));
+        Serial.print(" blocks. Is this correct (return for yes, 'n' for no)? ");
       }
     }
   }
@@ -10758,7 +10763,7 @@ void getDriveType(){
 
 void repeatTest(){
   repeat = false;
-  Serial.print(F("Loop the test forever (return for no, 'y' for yes)? "));
+  Serial.print("Loop the test forever (return for no, 'y' for yes)? ");
   while(1){
     if(Serial.available()){
       delay(50);
@@ -10775,7 +10780,7 @@ void repeatTest(){
         while(Serial.available()){
           Serial.read();
         }
-        Serial.print(F("Loop the test forever (return for no, 'y' for yes)? "));
+        Serial.print("Loop the test forever (return for no, 'y' for yes)? ");
       }
     }
   }
@@ -11069,20 +11074,20 @@ void resetDrive(){
 }
 
 void printRawData(){
-  Serial.println(F("Raw Data:"));
-  Serial.print(F("0000: "));
+  Serial.println("Raw Data:");
+  Serial.print("0000: ");
   for(int i = 0; i <= 531; i++){
     Serial.print(blockDataBuffer[i]>>4, HEX);
     Serial.print(blockDataBuffer[i]&0x0F, HEX);
-    Serial.print(F(" "));
+    Serial.print(" ");
     if((i + 1) % 8 == 0 and (i + 1) % 16 != 0){
-      Serial.print(F("  "));
+      Serial.print("  ");
     }
     if((i + 1) % 16 == 0){
-      Serial.print(F("        "));
+      Serial.print("        ");
       for(int j = i - 15; j <= i; j++){
         if(blockDataBuffer[j] <= 0x1F){
-          Serial.print(F("."));
+          Serial.print(".");
         }
         else{
           Serial.write(blockDataBuffer[j]);
@@ -11090,19 +11095,19 @@ void printRawData(){
       }
       Serial.println();
       if((i + 1) < 0x100){
-        Serial.print(F("00"));
+        Serial.print("00");
       }
       if((i + 1) >= 0x100){
-        Serial.print(F("0"));
+        Serial.print("0");
       }
       Serial.print((i + 1), HEX);
-      Serial.print(F(": "));
+      Serial.print(": ");
     }
   }
-  Serial.print(F("                                              "));
+  Serial.print("                                              ");
   for(int i = 528; i < 532; i++){
     if(blockDataBuffer[i] <= 0x1F){
-      Serial.print(F("."));
+      Serial.print(".");
     }
     else{
       Serial.write(blockDataBuffer[i]);
@@ -11112,20 +11117,20 @@ void printRawData(){
 }
 
 /*void printRawParity(){
-  Serial.println(F("Raw Parity Data:"));
-  Serial.print(F("0000: "));
+  Serial.println("Raw Parity Data:");
+  Serial.print("0000: ");
   for(int i = 0; i <= 531; i++){
     Serial.print(parity[i]>>4, HEX);
     Serial.print(parity[i]&0x0F, HEX);
-    Serial.print(F(" "));
+    Serial.print(" ");
     if((i + 1) % 8 == 0 and (i + 1) % 16 != 0){
-      Serial.print(F(" "));
+      Serial.print(" ");
     }
     if((i + 1) % 16 == 0){
-      Serial.print(F("        "));
+      Serial.print("        ");
       for(int j = i - 15; j <= i; j++){
         if(parity[j] <= 0x1F){
-          Serial.print(F("."));
+          Serial.print(".");
         }
         else{
           Serial.write(parity[j]);
@@ -11133,19 +11138,19 @@ void printRawData(){
       }
       Serial.println();
       if((i + 1) < 0x100){
-        Serial.print(F("00"));
+        Serial.print("00");
       }
       if((i + 1) >= 0x100){
-        Serial.print(F("0"));
+        Serial.print("0");
       }
       Serial.print((i + 1), HEX);
-      Serial.print(F(": "));
+      Serial.print(": ");
     }
   }
   Serial.print("                                              ");
   for(int i = 528; i < 532; i++){
     if(parity[i] <= 0x1F){
-      Serial.print(F("."));
+      Serial.print(".");
     }
     else{
       Serial.write(parity[i]);
@@ -11157,7 +11162,7 @@ void printRawData(){
 void printDataSpace(byte printingData){
   Serial.print(printingData>>4, HEX);
   Serial.print(printingData&0x0F, HEX);
-  Serial.print(F(" "));
+  Serial.print(" ");
 }
 
 /*PD 7  6  5  4  3 2 1 0
@@ -11196,7 +11201,7 @@ void initPinsDiag(){
 
 
 void halt(){
-  Serial.println(F("Program halted!"));
+  Serial.println("Program halted!");
   while(1);
 }
 
@@ -11279,7 +11284,7 @@ bool profileHandshake(){ //Returns true if the handshake succeeds, false if it f
   delayMicroseconds(1);
   while(receiveData() != 0b00000001 or readBsy() != 0){
     if(millis() - timeoutStart >= 5000){
-      //Serial.println(F("Handshake Failed!!!")); //If more than 5 seconds pass and the drive hasn't responded with a $01, halt the program
+      //Serial.println("Handshake Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with a $01, halt the program
       success = 0;
       break;
     }
@@ -11378,7 +11383,7 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
       break;
     }
     if(millis() - timeoutStart >= 5000){
-      //Serial.println(F("Command Confirmation Failed!!!")); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
+      //Serial.println("Command Confirmation Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
       success = 0xFF;
       break;
     }
@@ -11449,7 +11454,7 @@ void writeData(uint16_t writeBytes){
   while(readBsy() != 1){
     long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      Serial.println(F("Drive Never Said It Was Ready To Receive Data!!!"));
+      Serial.println("Drive Never Said It Was Ready To Receive Data!!!");
       break;
     }
   }
@@ -11478,7 +11483,7 @@ void writeData(uint16_t writeBytes){
     }
     long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      Serial.println(F("Drive never responded after write operation!"));
+      Serial.println("Drive never responded after write operation!");
       break;
     }
   }

@@ -39,9 +39,9 @@ void setup(){
   bool switchState = digitalRead(switchPin); // Read its state
   pinMode(red, OUTPUT); // Set the red LED to an output
   pinMode(green, OUTPUT); // And the green LED too
-  setLEDColor(1, 0); // And make the LED red to show that the ESProFile is initializing
   Serial.begin(115200); // Start serial comms
   clearScreen(); // Clear the screen
+  setLEDColor(1, 0); // Make the LED red to show that ESProFile is initializing
   if(switchState == 1){ // If the switch is in the diagnostic position, boot into diagnostic mode
     Serial.println("ESProFile is booting into diagnostic mode...");
     delay(2000);
@@ -84,15 +84,17 @@ void setLEDColor(bool r, bool g){
   if(r == 1){
     REG_WRITE(GPIO_OUT1_W1TS_REG, 0b1);
   }
-  else{
+  else if(r == 0){
     REG_WRITE(GPIO_OUT1_W1TC_REG, 0b1);
   }
-  // And same for green
+  // For green, we have to use PWM since the LED is painfully bright otherwise
   if(g == 1){
-    REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << green);
+    analogWrite(green, 10); // If g is 1, set the duty cycle to 5%-ish to put the green LED at a reasonable/pleasant brightness
+    //REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << green);
   }
-  else{
-    REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << green);
+  else if (g == 0){
+    analogWrite(green, 0); // Else, set the duty cycle to 0% to turn the green LED off
+    //REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << green);
   }
 }
 

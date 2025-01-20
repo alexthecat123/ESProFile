@@ -89,6 +89,10 @@ void emulatorSetup(){
   Serial.println("ESProFile is ready!"); // And print a ready message
 }
 
+// this is us, a million little things, couples therapy, shrinking, somebody somewhere
+// player 2 10k is pretty sticky and player 1 1k too and player 1 10k
+
+
 void emulatorLoop() {
   clearBSY(); // Make sure we're not telling the host we're busy
   while(readCMD() == 1); // Wait for CMD to go low (the start of a ProFile handshake)
@@ -235,17 +239,22 @@ void readDrive(){
       blockData[i+readStatusOffset] = seconds[i % 2];
     }
     // If another Selector command has been run since the last time this one was run, we need to update the free space on the SD card
-    // We don't do this every time because it takes about 1.5 seconds
+    // We don't do this every time because it can take forever for large SD cards
     if(selectorCommandRun == true){
       selectorCommandRun = false;
-      freeSpace = SDCard.vol()->freeClusterCount() * SDCard.vol()->sectorsPerCluster() * 512; // Get the free space in bytes
+      // In fact, it takes so long that I've commented this line out to disable it for now
+      //freeSpace = SDCard.vol()->freeClusterCount() * SDCard.vol()->sectorsPerCluster() * 512; // Get the free space in bytes
     }
     else{
       delay(10); // If we don't need to update free space, just wait for 10ms so that the user can see the LED light up amber
     }
 
-    char bytesFree[16];
-    ultoa(freeSpace, bytesFree, 10); // Convert the free space to a string
+    // Uncomment these to re-enable the free space indicator
+    //char bytesFree[16];
+    //ultoa(freeSpace, bytesFree, 10); // Convert the free space to a string
+
+    char bytesFree[] = "????????"; // Since we've disabled the free space indicator, just have it return "???????" instead
+
     int i;
     for(i = 0; i < 15; i++){ // Figure out how many digits are in the free space
       if(bytesFree[i] == 0x00){
