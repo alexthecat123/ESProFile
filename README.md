@@ -1,39 +1,46 @@
 # ESProFile
-A powerful ESP32-based emulator and diagnostic tool for the ProFile family of hard drives.
-PICTURE
+A powerful ESP32-based emulator and diagnostic tool for the ProFile and Widget families of hard drives.
 
+![IMG_1486](https://github.com/user-attachments/assets/cca3458e-213d-405e-afff-d3c4edb18b24)
 # Introduction
 A couple years ago, I designed [ArduinoFile](https://github.com/alexthecat123/arduinoFile/), a ProFile emulator based around the Arduino Mega. You could also connect it to a real ProFile and use it as a diagnostic tool, but most people used it in its emulator mode. It worked well for a lot of people, but it also had some major problems that were pretty frustrating. The biggest of these issues was that it would work fine on a Lisa 1 or 2/5, but would behave unreliably (or just not work at all) on a 2/10, when connected to a parallel card, or when connected to an XLerated Lisa. Plus, there were several other enhancements that I wanted to make, and they have all come together into the ESProFile project!
 
 # Key Features
 Given that ESProFile is essentially an evolution of ArduinoFile, it's easiest to talk about its features by comparing its capabilities to those of ArduinoFile.
 
-- ArduinoFile is based around an Arduino Mega, while ESProFile is based around an ESP32 (as you might be able to guess from the name). This makes it significantly more powerful, allowing me to add more features and fix some of the issues that ArduinoFile had.
+- ArduinoFile is based around an Arduino Mega, while ESProFile is based around an ESP32 (as you might be able to guess from the name). This makes it significantly more powerful, allowing me to add more features and fix pretty much all of the issues that ArduinoFile had.
 - ArduinoFile would often fail to work when connected to a Lisa 2/10, parallel card, or XLerated Lisa, but ESProFile can handle all these configurations with ease!
 - Being based around an Arduino Mega, ArduinoFile was more expensive to build than ESProFile. Looking on Amazon, you can get about 5 ESP32s for the same price as a single off-brand Arduino Mega, so it's a pretty significant cost savings!
-- ESProFile's diagnostic mode is MUCH improved over ArduinoFile's. With ESProFile, you can send pretty much any command in the ProFile command set (including all the 5MB diagnostic Z8 commands, 10MB diagnostic Z8 commands, and Widget-specific commands) in a nice and user-friendly way, while ArduinoFile only supported a select few and couldn't help you a whole lot if you had a 10MB ProFile or Widget. You should be able to troubleshoot pretty much any drive-related issue with ESProFile, as well performing tasks like backing up your drive and restoring from a backup!
-- ESProFile is capable of low-level formatting both 5MB and 10MB ProFiles, as well as Widgets, while ArduinoFile could only do 5MB ProFiles and only gave limited error information. If something goes wrong during your format on ESProFile, it'll tell you exactly what went wrong, which has been really helpful in my experience. This kind of goes with the above bullet, but since low-level formatting will probably be the most-used set of commands in ESProFile's diagnostic mode, I wanted to list it separately. 
+- ESProFile's diagnostic mode is MUCH improved over ArduinoFile's. With ESProFile, you can send pretty much any command in the ProFile command set (including all the 5MB diagnostic Z8 commands, 10MB diagnostic Z8 commands, and Widget-specific commands) in a nice and user-friendly way, while ArduinoFile only supported a select few and couldn't help you a whole lot if you had a 10MB ProFile or Widget. You should be able to troubleshoot pretty much any drive-related issue with ESProFile, as well as performing tasks like backing up your drive and restoring from a backup.
+- ESProFile is capable of low-level formatting both 5MB and 10MB ProFiles, as well as Widgets, while ArduinoFile could only do 5MB ProFiles and only gave limited error information. By contrast, if something goes wrong during your format on ESProFile, it'll tell you exactly what went wrong, which is really helpful. This kind of goes with the previous bullet, but since low-level formatting will probably be the most-used command in ESProFile's diagnostic mode, I wanted to list it separately. 
 - ArduinoFile was only available in an external version, while ESProFile is available in both an external version and an internal Widget replacement version that mounts right into the Widget drive bay!
-- I've selected the parts for ESProFile so that, if you order from JLCPCB, they can assemble the entire board for you. So once you get them in the mail, just pop your ESP32 into its socket, add a ribbon cable, and you'll be up and running!
-- ArduinoFile required that you upload a different set of firmware to the device in order to switch between emulator mode and diagnostic mode. But on ESProFile, thanks to the ESP32's larger flash memory, both sets of code are stored on the device simultaneously and you can swap between them at the flip of a switch!
+- I've selected the parts for ESProFile so that, if you order from JLCPCB, they can assemble the entire board for you for a really reasonable price. So once you get them in the mail, just pop your ESP32 into its socket, add a ribbon cable and SD card, and you'll be up and running!
+- ArduinoFile required that you upload different sets of firmware to the device in order to switch between emulator mode and diagnostic mode. But on ESProFile, thanks to the ESP32's larger flash memory, both sets of code are stored on the device simultaneously and you can swap between them at the flip of a switch!
 
 # Building One
 With all that out of the way, let's talk about how to actually build an ESProFile!
 ## Hardware
 
 ### Variants
-There are two different versions of the ESProFile hardware, and each of these has a couple subvariants.
+There are two different versions of the ESProFile hardware, and each of these has two subvariants. Note that the pictures of the boards shown below were taken of development versions of the PCBs, and the final boards that you'll be fabricating might have a couple visual changes and quality of life improvements.
 
 - External PCB: This board is designed for use outside your Lisa, like how a ProFile is used. Given its small size and its form factor, this is also the best choice when using the board in diagnostic mode. Since it doesn't receive any power from the Lisa, the external ESProFile must be powered via USB whenever it's being used.
+
+![IMG_1487](https://github.com/user-attachments/assets/0f368ebf-1d03-4b90-80c0-f3da04b81240)
+
 - Internal PCB: This board is designed to be mounted in your Lisa's drive bay, replacing the Widget drive in a 2/10 (or the Sun20 drive in a 2/5). It has mounting holes that line up with the Widget's mounting holes, and the status LED is aligned with the Widget's LED cutout in the Lisa's front panel. The board is powered by the Widget power connector instead of USB, and also supports power from the spare Twiggy connector in a Lisa 2/5 if you want to mount it in a 2/5 like a Sun20. You can still use the board in diagnostic mode like the external model, but the form factor is less ideal for this and it's designed more with emulation in mind.
+  
+![IMG_1488](https://github.com/user-attachments/assets/eaf0bb2c-198f-4a7c-aecf-cbbfd7d85f83)
 
-On ArduinoFile, I used an SD card breakout board so that the ArduinoFile would be entirely through-hole and people wouldn't have to solder a potentially-challenging SMD SD card slot directly. But for ESProFile, I opted to use an SMD SD card slot to facilitate fully-automated assembly by JLCPCB. This way, people who don't have any soldering experience can still easily build an ESProFile! This also makes the board look a lot better; I'm sure most people agree that the breakout was really ugly!
+On ArduinoFile, I used an SD card breakout board so that the ArduinoFile would be entirely through-hole and people wouldn't have to solder a potentially-challenging SMD SD card slot directly. But for ESProFile, I opted to use an SMD SD card slot to facilitate fully-automated assembly by JLCPCB. This way, people who don't have any soldering experience can still easily build an ESProFile! This also makes the board look a lot better; I'm sure most ArduinoFile users agree that the breakout was really ugly!
 
-Both the internal and external board variants come in debug and non-debug versions, with the only difference being that the debug version includes a pin header that exposes the ProFile bus for easy troubleshooting with a logic analyzer, while the non-debug version omits this, saving space and making things look nicer.
+Both the internal and external board variants come in debug and non-debug versions, with the only difference being that the debug version includes a pin header that exposes the ProFile bus for easy troubleshooting with a logic analyzer, while the non-debug version omits this, saving space and making things look nicer. All of the pictures in this document show the non-debug versions.
 
-Unless you just really, really, really love soldering for some reason, I would recommend getting JLCPCB to assemble your boards for you. Not only is it easier, but it's also cheaper than ordering the parts separately, even after you factor in the labor cost. Picking between the debug and non-debug versions is entirely up to you; I've used the debug header on ArduinoFile to help several people troubleshoot issues remotely, but it's also rather ugly and unnecessary for a lot of people. And it's also a lot less necessary on ESProFile compared to ArduinoFile, given ESProFile's increased reliability, the large amount of testing that I've done, and the fact that the majority of people won't be assembling the boards themselves.
+Unless you just really, really, really love soldering for some reason, I would recommend getting JLCPCB to assemble your boards for you. Not only is it easier, but it's also cheaper than ordering the parts separately, even after you factor in the labor costs. 
 
-The Gerber files for all four PCB variants can be found in the hw/boards folder. In general, I would recommend the external_noDebug board for 2/5 owners and people who want to use ESProFile to troubleshoot their actual ProFiles and Widgets, and I would recommend the internal_noDebug board for 2/10 owners who want to mount to board internally, and you can still use it for testing drives, even if it's a little less ideal.
+Picking between the debug and non-debug versions is entirely up to you; I've used the debug header on ArduinoFile to help several people troubleshoot issues remotely, but it's also rather ugly and unnecessary for a lot of people. And it's also a lot less necessary on ESProFile compared to ArduinoFile, given ESProFile's increased reliability, the large amount of testing that I've done, and the fact that assembly mistakes will be a lot less common since the majority of people won't be assembling the boards themselves.
+
+The Gerber files for all four PCB variants can be found in the hw/boards folder. In general, I would recommend the external_noDebug board for 2/5 owners and people who primarily want to use ESProFile to troubleshoot their actual ProFiles and Widgets, and I would recommend the internal_noDebug board for 2/10 owners who want to mount an emulator internally. Or heck, they're so cheap that you could just get both!
 
 ### Ordering PCBs
 
@@ -43,42 +50,49 @@ Given that some people reading this might not have any experience fabricating PC
 
 First, just go to JLCPCB's site and upload the Gerber zip file for the PCB that you want to get fabricated (found in one of the subfolders under hw/boards). This should present you with a screen like the one seen below. You can leave all the options at their defualt values, although I sometimes like to change the color to black because it looks cool and I also like to ask them to remove the order number from the board so that the silkscreen is nice and clean. This image shows both of those changes.
 
-INSERT IMAGE
+<img width="1920" alt="JLC_Board_Order" src="https://github.com/user-attachments/assets/ced7139b-33da-4036-845e-4c6b39928528" />
 
 If you only want to fabricate the board and don't want them to assemble it for you, then just add the boards to your cart, check out, and you're done! You'll be able to find all the parts you need to assemble things a little later on at the end of this section.
 
 If you want them to assemble the board for you, then scroll down and turn on the toggle for PCB Assembly. This presents you with the options shown below. Just leave all this at the default values and hit Next.
 
-INSERT IMAGE
+<img width="1920" alt="JLC_Assembly_Order" src="https://github.com/user-attachments/assets/a618cfe8-52cf-4363-bd4c-f6e8e9fa9930" />
 
-The next screen that comes up is just a large preview of the front side of the board, so just hit Next again to skip this. There aren't any options to configure on that screen. After you do that, another screen will appear that asks you to upload a BOM file and a CPL file. The BOM file is the bill of materials that lists the part numbers of the parts that should be populated into the board, and the CPL file (pick-and-place) file gives the coordinates of each part to the pick-and-place machines that insert components into the board. Just upload the BOM and PickAndPlace csv files from the same directory as your Gerber files, as shown in the screenshot below, and then hit Process BOM & CPL.
+The next screen that comes up is just a large preview of the front side of the board, so just hit Next again to skip this. There aren't any options to configure on that screen. After you do that, another screen will appear that asks you to upload a BOM file and a CPL file. The BOM file is the bill of materials that lists the part numbers of the parts that should be populated into the board, and the CPL (pick-and-place) file gives the coordinates of each part to the pick-and-place machines that insert components into the board. Just upload the BOM and PickAndPlace csv files from the same directory as your Gerber files, as shown in the screenshot below, and then hit Process BOM & CPL.
 
-INSERT IMAGE
+<img width="1920" alt="JLC_Assembly_BOM_CPL" src="https://github.com/user-attachments/assets/619076df-6bc5-4585-8fc9-09293be376af" />
 
-Now you'll be presented with a list of all the parts that will be installed into the board. Assuming none of the parts are out of stock (or the stock is too low), you can just hit Next. But, as seen in the screenshot below, that isn't the case sometimes. In my example, they don't have enough 15 Ohm resistors to populate R1 on all the boards.
+Now you'll be presented with a list of all the parts that will be installed into the board. Assuming none of the parts are out of stock (or the stock is too low), you can just hit Next. But, as seen in the screenshot below, sometimes you get unlucky and something is out of stock. In my example, they don't have enough 15 Ohm resistors to populate R1 on all the boards.
 
-INSERT IMAGE.
+<img width="1286" alt="JLC_Assembly_PartsList" src="https://github.com/user-attachments/assets/ed235a0c-6a73-4e22-a3cc-b5e0de0ef612" />
 
 To fix this, click on the problematic part and read over the part info that pops up to see the dimensions and specs of the part. Then go to the Search Part tab and try to find a substitute. Once you find one, just hit Select, and then you can hit Next to proceed to the next page. You can see this part selection process below.
 
-INSERT IMAGE.
+<img width="1294" alt="JLC_Assembly_PickSubPart" src="https://github.com/user-attachments/assets/0355b93b-eee5-4023-b39a-ebda81869d22" />
 
 Now it's time for the fun part: on this next screen, we get to see a 3D model of the board with all the components populated! Just look over this to make sure that everything looks right, and then hit Next when you're done. Everything should be fine because I double-checked the files for every board, but if you see anything weird, you can rotate parts by clicking them and hitting the spacebar, and you can move parts around using the arrow keys to get them positioned just right. You can see this window below.
 
-INSERT IMAGE.
+<img width="1297" alt="JLC_Assembly_Preview" src="https://github.com/user-attachments/assets/ee4b1978-6b2b-4c81-9aed-af19d48a17b9" />
 
 The next screen gives you a summary of your order, which should be between $30-40 depending on which board you chose to order. But remember, that's for 5 fully-assembled ESProFiles (minus the ESP32), so only $6-8 apiece! You have to choose a product description on this screen for export reasons (or something) before adding it to your cart, so just pick something under the DIY category and proceed.
 
 Now you can just place your order and wait for the assembled boards to arrive!
 
-If you've elected to assemble the board yourself, you can get all the parts you need from [this DigiKey list](https://www.digikey.com/en/mylists/list/T5290A3F90). This contains the parts for the internal version of the board with the debug header and the SMD SD card slot, and you can just omit parts depending on which version of the board you're building. If you're building an ESProFile that doesn't include the debug header, omit the 15-pin male header. If you're building the external version of ESProFile, omit the 8-pin 3.96mm pitch male header and the 26-pin (2x13) male header. I included the SMD SD card slot in the list as well, just in case you want to solder that by hand, but you'll obviously want to omit that if you're planning on building the through-hole version of the board that uses the SD breakout instead. You can follow the schematics in the hw/schematics folder to better understand how everything goes together.
+When I ordered my boards, they emailed me and asked me to confirm the placement of the Widget power connector on the internal version of the board since it only takes up half the footprint and looks a little confusing. So if you get this same email, just tell them that yes, it's correct as-is. If they email you asking to confirm anything else, and you're not sure what they're talking about, then feel free to email me!
 
-Regardless of whether you're getting the board pre-assembled or building it yourself, you'll need [an ESP32](https://www.amazon.com/dp/B07WCG1PLV) and [a microSD card](https://www.amazon.com/dp/B07R8GVGN9) (Lisa disk images are small, so any size is fine). Depending on your needs, you might also need to make an interface cable or two. If you're just planning on using ESProFile as a Widget replacement, then you won't need any cables, but you'll need to make [a ProFile cable](https://www.digikey.com/en/mylists/list/XJCXVWD9R8) if you're planning on using ESProFile as a ProFile replacement on a 2/5 (or if you're planning on connecting it to a ProFile in diagnostic mode). If you're also planning on connecting it to Widgets in diagnostic mode, you'll need to make [a Widget cable](https://www.digikey.com/en/mylists/list/S48Q9YR4S0) as well. The ProFile and Widget cables should look like the cables in the image below once you've put them together.
+If you've elected to assemble the board yourself, you can get all the parts you need from [this DigiKey list](https://www.digikey.com/en/mylists/list/T5290A3F90). This contains the parts for the internal version of the board with the debug header, and you can just omit parts depending on which version of the board you're building. If you're building an ESProFile that doesn't include the debug header, omit the 15-pin male header. If you're building the external version of ESProFile, omit the 8-pin 3.96mm pitch male header, the 26-pin (2x13) male header, the 1N4001 diode, and the 10uF capacitor. You can follow the schematics in the hw/schematics folder to better understand how everything goes together.
 
-IMAGE
+Regardless of whether you're getting the board pre-assembled or building it yourself, you'll need [an ESP32](https://www.amazon.com/dp/B07WCG1PLV) and [a microSD card](https://www.amazon.com/dp/B07R8GVGN9) (Lisa disk images are small, so any size is fine). Depending on your needs, you might also need to make an interface cable or two. If you're just planning on using ESProFile as a Widget replacement, then you won't need any cables. But you'll need to make [a ProFile cable](https://www.digikey.com/en/mylists/list/XJCXVWD9R8) if you're planning on using ESProFile as a ProFile replacement on a 2/5 (or if you're planning on connecting it to a ProFile in diagnostic mode). If you're also planning on connecting it to Widgets in diagnostic mode, you'll need to make [a Widget cable](https://www.digikey.com/en/mylists/list/S48Q9YR4S0) as well. The ProFile and Widget cables should look like the cables in the image below once you've put them together. Note the pin that you have to remove from the DB25 connector on the ProFile cable; on most Lisas, this pin is blocked off on the female connector.
 
-If you made the internal version, then you'll probably want to mount it inside your Lisa's drive cage! First, remove any hard disk that's already in there, and then use two M3 x 10mm bolts and six M3 nuts to attach ESProFile to the side of your drive cage, using two of the original mounting holes for the Widget and the two large holes in the bottom of the ESProFile board. I got my nuts and bolts from [this assortment on Amazon](https://www.amazon.com/dp/B0BN297MP5). You'll want to mount ESProFile using the two frontmost holes on the right side of the drive cage, so that the status LED shines through the little transparent lens on your Lisa's front panel that the original Widget status LED also lined up with. Put the bolts through from the outside of the cage, and then screw a stack of two nuts onto the other side of each bolt. These will serve as standoffs to keep ESProFile from touching the side of the cage. Then slide ESProFile over the portion of the bolts that are still sticking out, and secure it in place with your final two nuts. Once you're done, it should look like the following picture:
+Don't put the ESP32 into its socket yet; there's one thing we need to do down in the Software section before we can do that!
 
+![IMG_1489](https://github.com/user-attachments/assets/e6ddb9e4-1dec-4146-b18f-54908e1c803c)
+
+If you made the internal version, then you'll probably want to mount it inside your Lisa's drive cage! First, remove any hard disk that's already in there, and then use two M3 x 10mm bolts and six M3 nuts to attach ESProFile to the side of your drive cage, using two of the original mounting holes for the Widget and the two large holes in the bottom of the ESProFile board. I got my nuts and bolts from [this assortment on Amazon](https://www.amazon.com/dp/B0BN297MP5). You'll want to mount ESProFile using the two frontmost holes on the right side of the drive cage, so that the status LED shines through the little transparent lens on your Lisa's front panel that the original Widget status LED also lined up with. Put the bolts through from the outside of the cage, and then screw a stack of two nuts onto the other side of each bolt. These will serve as standoffs to keep ESProFile from touching the side of the cage. Then slide ESProFile over the portion of the bolts that are still sticking out, and secure it in place with your final two nuts. I know this probably isn't the best mounting solution out there, but I've never claimed to be great with mounting hardware, so feel free to do something else if you have a better idea! Once you're done, it should look like the following pictures:
+
+![IMG_1490](https://github.com/user-attachments/assets/937983e4-920b-4883-bd9f-0778829440d0)
+
+![IMG_1475](https://github.com/user-attachments/assets/bc143815-9c61-4cf8-9d1e-009c586f10ed)
 
 Once it's installed, just connect the Widget data cable to the connector on the board labeled Widget Data, and connect the Widget power cable to the connector labeled Widget Power. Note that the top four pins on the Widget power cable are unused, so align the bottom of the Widget power cable with the bottom of the connector. If you instead have a Lisa 2/5 that's set up for use with a Sun20, you'll still connect your data cable to the Widget Data connector, but for power, you'll connect your spare Twiggy cable to the header labeled Twiggy Power, just like how your Sun20 was wired up.
 
@@ -94,17 +108,23 @@ Once you've got it installed, use the IDE to open the ESProFile.ino file from th
 
 The Arduino IDE doesn't have support for the ESP32 included out of the box, so add it by clicking the little circuit board icon on the ribbon at the left of the screen, searching for "esp32" in the pane that appears, and then clicking Install next to the "esp32" result. Make sure you're installing the package from Espressif Systems, NOT the one from Arduino!
 
-INSERT SCREENSHOT
+<img width="1728" alt="Boards_Manager" src="https://github.com/user-attachments/assets/bdf66031-0194-46eb-9e47-aa62ada1f26b" />
 
 Now we need to install the SDFat library that the ESP32 uses to communicate with the SD card. To do this, click the little book icon that's right below the board icon, and then search for "SDFat". There should only be one result called SDFat, so install it (just to make sure you're installing the right one, the author is Bill Greiman).
 
-INSERT SCREENSHOT
+<img width="1728" alt="Libraries_Manager" src="https://github.com/user-attachments/assets/c5864be5-15bd-47c1-a623-cb56942bb92e" />
 
-And that's it for the setup! We can now connect to the board and upload the firmware. Connect a Micro-USB cable between the ESP32 and your computer, and then select Tools -> Board -> esp32 -> ESP32 Dev Module to tell the IDE what type of board we're using. Then go to Tools -> Port and select whichever port your board is connected to. If you're not sure which one it is, just unplug the board, check this menu, plug the board back in, and check the menu again. The port that appears when you plug the board back in is the one you want!
+And that's it for the setup! 
 
-INSERT SCREENSHOT
+We can now connect to the board using the Arduino IDE. Connect a Micro-USB cable between the ESP32 and your computer, and then select Tools -> Board -> esp32 -> ESP32 Dev Module to tell the IDE what type of board we're using. Then go to Tools -> Port and select whichever port your board is connected to. If you're not sure which one it is, just unplug the board, check this menu, plug the board back in, and check the menu again. The port that appears when you plug the board back in is the one you want!
 
-Now just click the Upload button (the arrow in the upper-left corner of the screen), and wait for the firmware to be uploaded to your board. And that's it; your ESProFile is now flashed with its firmware!
+<img width="752" alt="Board_Port" src="https://github.com/user-attachments/assets/2ccaa2ca-b6de-436e-8522-586a9cfe8763" />
+
+Before we actually upload the code, we need to configure an efuse within the ESP32. The ESProFile board holds the ESP32's pin 12 high at boot thanks to some pullup resistors, which has the unwanted side effect of telling the ESP32 to power its flash from 1.8V instead of 3.3V, preventing it from booting properly. By setting an efuse, we can tell it to ignore that pin and always power the flash from 3.3V, solving our problem. To do this, open a terminal window (macOS/Linux) or Command Prompt (Windows), type "python3 espefuse.py --port myPort set_flash_voltage 3.3V" and hit enter. Make sure to replace myPort with whatever port you just selected in the Arduino IDE. And if it doesn't recognize python3, try just typing "python" instead. It'll probably ask you to type "BURN" in order to confirm, and then you'll be done! I believe the efuse tool is installed automatically by the Arduino IDE on Windows, macOS, and Linux, but I can't say for sure because I don't have a Windows system and I've installed alternate versions of it manually on macOS and Linux, so just let me know if this doesn't work and I can help you out!
+
+Now that the efuse programming is complete, you can install the ESP32 into its socket on the ESProFile board. And burning an efuse is permanent, so you'll never need to mess with it again and you can do all future firmware updates without removing the ESP32 from your PCB.
+
+Now go back to the Arduino IDE, click the Upload button (the arrow in the upper-left corner of the screen), and wait for the firmware to be uploaded to your board. And that's it; your ESProFile is now flashed with its firmware!
 
 ### SD Card
 
@@ -124,15 +144,15 @@ At power-on, ESProFile looks for an image on the SD card called profile.image (c
 
 ### Selector Info
 
-[The Selector](https://github.com/stepleton/cameo/tree/master/aphid/selector) is an incredibly useful program by Tom Stepleton that allows you to manage your collection of disk images right from your Lisa, and I would highly recommend using it. Just like Tom's own Cameo/Aphid emulator, ESProFile is fully compatible with the Selector's set of commands. For more info about the Selector, and how to use it, read [its user's manual](https://github.com/stepleton/cameo/blob/master/aphid/selector/MANUAL.md), but the gist of it is that you can create a bunch of disk images with different OS's on them, and select the one that you'd like to boot from whenever you start up your Lisa. Pretty awesome! To get back to the Selector interface after you've already used it to select another image, simply turn off your Lisa, hit ESProFile's reset button or power-cycle the board and then turn your Lisa back on.
+[The Selector](https://github.com/stepleton/cameo/tree/master/aphid/selector) is an incredibly useful program by Tom Stepleton that allows you to manage your collection of disk images right from your Lisa, and I would highly recommend using it. Just like Tom's own Cameo/Aphid emulator, ESProFile is fully compatible with the Selector's set of commands. For more info about the Selector, and how to use it, read [its user's manual](https://github.com/stepleton/cameo/blob/master/aphid/selector/MANUAL.md), but the gist of it is that you can create a bunch of disk images with different OS's on them, and select the one that you'd like to boot from whenever you start up your Lisa. Pretty awesome! To get back to the Selector interface after you've already used it to select another image, simply turn off your Lisa, hit ESProFile's reset button or power-cycle the board, and then turn your Lisa back on.
 
 Two things to note about the Selector on ESProFile.
 - Given that ESProFile's SD card accesses aren't as fast as the accesses on Tom's PocketBeagle-based Cameo/Aphid emulator, it can take several seconds to execute a Copy operation in the Selector. This causes the Selector to time out, and it'll even tell you that this could be caused by a slow SD card. Don't worry; just wait until ESProFile's status LED turns green again, and then you should be good to go! Note that your newly-copied image probably won't show up in the image list because of the timeout, so either execute another Selector command that refeshes the image list or exit and reenter the Selector to get it to show up. Copying a 5MB ProFile will take about 7-10 seconds, and the times will go up from there as the drive size increases. Luckily, copying images isn't something that you do super often, so this isn't too big of a problem.
-- Once again, thanks to slow SD card accesses, it takes quite a bit of time (up to 10 seconds) for ESProFile to count up the free space on larger SD cards. The Selector requests this information frequently (once every second or two, although I've written ESProFile's code to only update it when a file operation has occurred), which leads to long delays where the Selector just freezes while it waits for ESProFile to send this information. This is so annoying that I've just disabled the free space reporting, just like on ArduinoFile, and ESProFile reports "????????" for amount of space available on the SD card. This isn't a huge deal though because Lisa disk images are really small and modern SD cards are large enough that you never need to worry about running out of space!
+- It takes quite a bit of time (up to 10 seconds) for ESProFile to count up the free space on larger SD cards, once again thanks to slow SD card accesses. The Selector requests this information frequently (once every second or two, although I've written ESProFile's code to only update it when a file operation has occurred), which leads to long delays where the Selector just freezes while it waits for ESProFile to send this information. This is so annoying that I've just disabled the free space reporting, just like on ArduinoFile, and ESProFile reports "????????" for the amount of space available on the SD card. This isn't a huge deal though because Lisa disk images are really small and modern SD cards are large enough that you never need to worry about running out of space!
 
 ### Serial Interface
 
-If you're curious about what commands your Lisa is sending over to your emulated drive, just open up a serial connection with your ESProFile at 115200 baud, and you'll be able to see the commands scoll by in real time as the Lisa sends them. On ArduinoFile, it just printed the raw command bytes, but I've updated the ESProFile so that it actually interprets the commands for you, allowing you to see exactly what your Lisa is doing!
+If you're curious about what commands your Lisa is sending over to your emulated drive, just open up a serial connection with your ESProFile at 115200 baud, and you'll be able to see the commands scoll by in real time as the Lisa sends them. On ArduinoFile, it just printed the raw command bytes, but I've updated ESProFile so that it actually interprets the commands for you, allowing you to see exactly what your Lisa is doing!
 
 ## Diagnostic Mode
 
@@ -140,19 +160,20 @@ Unlike emulator mode, there's a whole lot to say here, just because of how many 
 
 When you switch into diagnostic mode, ESProFile will allow you to send commands to an actual ProFile or Widget that you connect to the board in order to troubleshoot it, perform backups/restores, low-level formats, and many other utility functions.
 
-To access the ESProFile diagnostic interface, connect to ESProFile over serial at 115200 baud. Note that ESProFile sends ANSI escape codes (for things like clearing the screen and moving the cursor), so make sure that you're using a terminal program that supports this. Otherwise it'll look pretty ugly. Note that the Arduino IDE's built-in serial monitor does NOT support escape codes, so you'll need to use something else. I can't make a recommendation for Windows or Linux, but on Mac, I use Serial LINKKK. It's paid software, but it's really nice and worth the money in my opinion!
+To access the ESProFile diagnostic interface, connect to ESProFile over serial at 115200 baud. Note that ESProFile sends ANSI escape codes (for things like clearing the screen and moving the cursor), so make sure that you're using a terminal program that supports this. Otherwise it'll look pretty ugly. Note that the Arduino IDE's built-in serial monitor does NOT support escape codes, so you'll need to use something else. I can't make a recommendation for Windows or Linux, but on Mac, I use [Serial](https://www.decisivetactics.com/products/serial/). It's paid software, and I know it might seem really dumb to pay for a terminal program (that's certainly what I thought at first), but it's really nice and worth the money in my opinion!
 
 Once you're connected to ESProFile, you should see a main menu with a variety of options that looks like this:
 
-INSERT PHOTO
+<img width="517" alt="Main_Menu" src="https://github.com/user-attachments/assets/5bec0009-8317-46a5-b9ba-7f466b327dc5" />
 
 This main menu also contains several submenus, including menus for the 5MB and 10MB ProFile diagnostic command sets, as well as Widget-specific commands. There is also a submenu for drive tests, allowing you to select various options for exercising/burning in your drive.
 
 A couple of notes before we get into all of the menu options.
 - All numbers that ESProFile displays and requests from you should be in hex, unless specified otherwise.
 - Unlike ArduinoFile, ESProFile does NOT require you to type out leading zeros whenever it requests user input that must be a certain length. For instance, if you wanted to access block 0 on ArduinoFile, you'd have to type out 000000, while you can just type 0 on ESProFile.
-- When performing particular operations, ESProFile will ask you if you want to use default values or specify your own values for certain parameters. In the VAST majority of cases, you can just leave these at the default, so don't worry if you don't know what they mean. In fact, I don't think that I've ever had to override any of these default values when using ESProFile.
+- When performing particular operations, ESProFile will ask you if you want to use default values or specify your own values for certain parameters. In the VAST majority of cases, you can just leave these at the default, so don't worry if you don't know what they mean. In fact, I don't think that I've ever had to override any of these default values when using ESProFile in practical applications.
 - Any command that can destroy all the data on your disk will warn you before proceeding, so don't worry about accidentally wiping your drive!
+- Pretty much any command that iterates over multiple blocks and takes a while to execute (like a sequential read test or a search of the drive for a string) can be interrupted by pressing return. The only exception to this that I can think of at the moment is a low-level format; that's something that you really don't want to interrupt unless you absolutely have to!
 
 Now let's get into all the menu options. There are so many of them that it would be impractical to show pictures for each one, so I'll just show pictures of each major submenu and provide descriptions of the other menu options. When you select any option, ESProFile generally makes it pretty easy to understand how to provide any info needed to execute it, so you shouldn't have any problems there.
 
@@ -193,7 +214,7 @@ That's everything in terms of actual commands; these next four options are subme
 ### G) Drive Tests Submenu
 This submenu contains several burn-in tests for exercising your drive, as shown in the picture below.
 
-PHOTO HERE
+<img width="518" alt="Drive_Tests" src="https://github.com/user-attachments/assets/600343e5-1622-46cb-9600-a000dbbfd980" />
 
 Here's a description of each of them. All tests will prompt you with the option to loop them forever, if you wanted to do something like burning in your drive overnight, in which case the output will display the pass number that the test is currently on. You can always interrupt a test by pressing return on your keyboard.
 #### 1) Sequential Read
@@ -207,7 +228,7 @@ Just like the repeated read test, except this one writes the block instead.
 #### 5) Random Read
 Reads random block numbers from your drive, printing any read errors along the way. This is really useful for exercising your drive's ability to seek reliably, since the next block that's going to be accessed could be anywhere on the disk. Note that this test will perform a number of reads that is equal to the number of blocks that your drive contains, which does not guarantee that every block on the drive will be accessed due to the randomness. Some may not be accessed at all, and others may be accessed multiple times, but things should be evenly distributed for the most part.
 #### 6) Random Write
-Just like the random read test, except this one does writes intead of reads.
+Just like the random read test, except this one does writes instead of reads.
 #### 7) Butterfly Read
 This test goes through and reads the highest block on the disk, followed by the lowest, adds one to the lower bound and subtracts one from the upper bound, and then repeats until every block on the disk has been accessed, printing errors along the way. So on a 5MB ProFile, this would look like 25FF -> 0 -> 25FE -> 1 -> 25FC -> 2, and so on. This leads to the heads taking long strokes across the disk, gradually becoming shorter and shorter as we reach the middle of the disk, and then gradually becoming longer and longer again until the numbers have fully reversed and we reach the ends of the disk again. Due to the long strokes of the heads, this is good for stressing the positioning mechanism and testing seek reilability, but maybe not quite as good as the unpredictability of the random read test. However, unlike the random read test, this one guarantees that every block on the disk will be visited.
 #### 8) Butterfly Write
@@ -215,15 +236,16 @@ Just like butterfly read, except we're writing to the disk instead of reading.
 #### 9) Read-Write-Read
 Tests your disk's data retention by first reading the contents of the disk, writing each block with a test pattern, and then rereading everything to compare it with the data that was written. Errors will be reported along the way in each phase.
 #### A) Return to Main Menu
-I would be pretty concerned about you if you couldn't figure out what this one did.
-
+I would be pretty concerned about you if you couldn't figure out what this one did.   
+<br />
+<br />
 The next submenu on the main menu is:
 ### H) 5MB ProFile Diagnostic Z8 Commands Submenu
 In order to execute any of the commands in this menu, you must have a 5MB ProFile with a [2K (or 4K) ROMless Z8](https://www.ebay.com/itm/394267646989) that's fitted with the LLF version of the 5MB ProFile ROM. A standard ProFile Z8 processor with its built-in mask ROM can't execute these commands. When attempting to enter this menu, ESProFile will try to detect if your ProFile has the proper ROM fitted, and will warn you (but still let you proceed) if not. You can find the firmware (both standard and LLF) for both the 5MB and 10MB ProFiles [here](http://www.bitsavers.org/pdf/apple/disk/profile/firmware/). For the 5MB ProFile, you can burn this into either a 2716 or (if you copy-paste the image twice) a 2732 EPROM.
 
 The 5MB diagnostic menu looks like this:
 
-PICTURE HERE
+<img width="519" alt="5MB_Diag" src="https://github.com/user-attachments/assets/d07ebb16-e919-4d56-9cd6-084bedd8ab3b" />
 
 The options in this menu are as follows.
 #### 1) Read CHS Into Data Buffer
@@ -257,16 +279,16 @@ Exactly the same as Fill Buffer With Pattern on the main menu, just placed here 
 #### F) Show Command, Status, and Data Buffers
 Exactly the same as Show Command, Status, and Data Buffers on the main menu, just placed here as well for convenience.
 #### G) Return to Main Menu
-As I said with the Drive Tests submenu, I'd be pretty worried about you if you couldn't figure this one out!
-
-
+As I said with the Drive Tests submenu, I'd be pretty worried about you if you couldn't figure this one out!   
+<br />
+<br />
 Our next submenu on the main menu is:
 ### I) 10MB ProFile Diagnostic Z8 Commands Submenu
 In order to execute any of the commands in this menu, you must have a 10MB ProFile with a [4K ROMless Z8](https://www.ebay.com/itm/394267646989) that's fitted with the LLF version of the 10MB ProFile ROM. A standard ProFile Z8 processor with its built-in mask ROM can't execute these commands. When attempting to enter this menu, ESProFile will try to detect if your ProFile has the proper ROM fitted, and will warn you (but still let you proceed) if not. You can find the firmware (both standard and LLF) for both the 5MB and 10MB ProFiles [here](http://www.bitsavers.org/pdf/apple/disk/profile/firmware/). For the 10MB ProFile, you should burn this into a 2732 EPROM.
 
 The 10MB diagnostic menu looks like this:
 
-PICTURE
+<img width="516" alt="10MB_Diag" src="https://github.com/user-attachments/assets/bb599b76-acf8-4dad-a01c-bb15cf8c1064" />
 
 And here are all the commands within it!
 #### 1) Read CHS Into Data Buffer
@@ -286,7 +308,7 @@ Performs the Format step (step 1/4) of a low-level format operation without perf
 #### 8) Scan
 Performs the Scan step (step 4/4) of a low-level format operation, without performing the other three steps of the format. You can also use it outside the context of a low-level format to scan your drive for defects. If the all-in-one low-level format command fails, you can run the individual steps, including this one, individually to get more error info. This is identical to the surface scan that your ProFile takes a minute or two to complete when you first power it on.
 #### 9) Init Spare Table
-Performs the Init Spare Table step (steps 2/4 and 3/4) of a low-level format operation, without performing the other three steps of the format. You can also just run it on its own to recreate your spare table if you ever want to do that for some reason, without doing a low-level format. If the all-in-one low-level format command fails, you can run the individual steps, including this one, individually to get more error info. Note that, unlike with the all-in-one formatter, you can elect not to verify the integrity of the spare table sectors if you run this command separately.
+Performs the Verify Spare Sectors Integrity and Init Spare Table steps (steps 2/4 and 3/4) of a low-level format operation, without performing the other three steps of the format. You can also just run it on its own to recreate your spare table if you ever want to do that for some reason, without doing a low-level format. If the all-in-one low-level format command fails, you can run the individual steps, including this one, individually to get more error info. Note that, unlike with the all-in-one formatter, you can elect not to verify the integrity of the spare table sectors if you run this command separately.
 #### A) Test ProFile RAM
 Commands the drive to perform a self-test of its RAM. If any errors are found, the address at which the error occurred will be displayed, as well as the data that was expected to be read and the actual incorrect data that was read out.
 #### B) Read Header
@@ -308,17 +330,18 @@ Exactly the same as Fill Buffer With Pattern on the main menu, just placed here 
 #### J) Show Command, Status, and Data Buffers
 Exactly the same as Show Command, Status, and Data Buffers on the main menu, just placed here as well for convenience.
 #### K) Return to Main Menu
-It does exactly what it says.
-
+It does exactly what it says.   
+<br />
+<br />
 The final submenu is:
 ### J) Widget-Specific Commands Submenu
 Boy, is this one long! And it's got yet another submenu under it too! But the good news is that the Widget's abundance of commands sure comes in handy when you're troubleshooting one! Although some of these commands will execute on any Widget, others require a Widget running firmware version 1A45. If you try to enter the menu with a non-1A45 Widget, you'll be warned that certain commands may not work, but you can absolutely still try as many commands as you want at your own risk. If you don't have the 1A45 firmware, you can download it from [here](http://www.bitsavers.org/pdf/apple/disk/widget/firmware/). Just burn it into a 2764 EPROM and replace the Widget's existing 2764 with your new one. And there's no need to swap back to your Widget's original ROM when you're done; you can just keep the new one in there forever! Unlike the ProFile, the Widget doesn't have separate LLF and standard ROMs, so all the commands, including low-level format, are available from the same stock Widget ROM!
 
-The Widget is an incredibly complex drive, and it would be really hard for me to do all these commands justice here, so I'd suggest reading the Widget ERS document starting on page 81 and ending on page 133 (of the PDF, not the page numbers written in the document itself) to truly become a Widget pro.
+The Widget is a really complex drive, and it would be really hard for me to do all these commands justice here, so I'd suggest reading the Widget ERS document starting on page 81 and ending on page 133 (of the PDF, not the page numbers written in the document itself) to truly become a Widget pro.
 
 The Widget menu looks like this:
 
-PICTURE
+<img width="516" alt="Widget_Diag" src="https://github.com/user-attachments/assets/16328dd9-30e7-4549-899e-d440dea6bc9a" />
 
 And now onto the commands!
 #### 1) Soft Reset
@@ -330,7 +353,7 @@ This command is identical to the Get Drive Info command on the main menu; it's j
 #### 4) Read Spare Table
 Reads the Widget's spare table into ESProFile's data buffer. Unlike the ProFiles, where the spare table contains drive ID info as well as the spare block information, the Widget's spare table only contains the spare block information. To get the drive ID, run 3) instead. Given that the Widget stores these separately, things are a lot more detailed here than in the ProFile's spare table, and ESProFile interprets all the information in the spare table for you.
 #### 5) Get Controller Status
-Returns detailed status info from the Widget's controller board, and interprets all of it for you. There are a lot of status fields here, but they can be super useful. One that you might find particularly helpful is Byte 1 of the State Registers field, which contains some overall error information. Any field that has a "/" before it (like "/CRC error") means that it's active low, so it you see "/CRC error: 1", then things are actually fine because it's active low and it would need to be a 0 for there to actually be a CRC error.
+Returns detailed status info from the Widget's controller board, and interprets all of it for you. There are a lot of status fields here, but they can be super useful. One that you might find particularly helpful is Byte 1 of the State Registers field, which contains some overall error information. Any field that has a "/" before it (like "/CRC error") means that it's active low, so if you see "/CRC error: 1", then things are actually fine because it's active low and it would need to be a 0 for there to actually be a CRC error.
 #### 6) Get Servo Status
 Returns detailed status info from the Widget's servo board. The stuff at the end that interprets the most recently-receieved and most recently-processed servo commands is particularly useful to determine if the servo is working properly.
 #### 7) Get Abort Status
@@ -348,9 +371,9 @@ Seeks the drive's heads to the user-specified cylinder, head, and sector, but do
 #### D) Send Servo Command
 This is actually a submenu, which we'll discuss below once we get through the rest of the commands on this main menu screen.
 #### E) Send Restore
-This command initializes the servo board and moves the heads to a known location, updating the Widget controller's internal state to account for the new head location. The data/format recal commands (discussed later) do the same thing, except they don't update the controller's state, so it doesn't realize that the heads have moved. You can perform either a data restore or a format restore; the data restore puts the heads over the innermost data track on the disk (+/- three tracks), while the format restore moves the heads even further inwards and off the data region entirely. If your servo starts acting weird, send a data restore to revive it; the format restore is really only used when you're about to do a low-level format, and it's handled automatically by ESProFile's LLF routine.
+This command initializes the servo board and moves the heads to a known location, updating the Widget controller's internal state to account for the new head location. The data/format recal commands (discussed later) do the same thing, except they don't update the controller's state, so it doesn't realize that the heads have moved. You can perform either a data restore or a format restore; the data restore puts the heads over the innermost data track on the disk (I think it's like track 176 or something), while the format restore moves the heads even further inwards and off the data region entirely (track 220). If your servo starts acting weird, send a data restore to revive it; the format restore is really only used when you're about to do a low-level format, and it's handled automatically by ESProFile's LLF routine.
 #### F) Set Recovery
-This option allows you to toggle the Widget's recovery mode on and off; running the command will tell which state the Widget is currently in and ask if you want to switch into the other state. Recovery is on by default when the Widget powers up, and it's basically the Widget's error-handling subsystem. When you turn it off, the Widget controller will always fail in an operation when it encounters an exception instead of trying to recover, leaving it up to ESProFile to process and respond to the exception. Certain commands, such as low-level formatting, require Recovery to be turned off, and ESProFile's low-level formatter routine will turn it off automatically if it's on.
+This option allows you to toggle the Widget's recovery mode on and off; running the command will tell you which state the Widget is currently in and ask if you want to switch into the other state. Recovery is on by default when the Widget powers up, and it's basically the Widget's error-handling subsystem. When you turn it off, the Widget controller will always fail in an operation when it encounters an exception instead of trying to recover, leaving it up to ESProFile to process and respond to the exception. Certain commands, such as low-level formatting, require Recovery to be turned off, and ESProFile's low-level formatter routine will turn it off automatically.
 #### G) Set Auto-Offset
 This command will determine if the Widget's auto-offset functionality is enabled, then enable it if it wasn't, and finally try to auto-offset the heads over the current track. Auto-offset is the servo board's ability to automatically try and center the heads over a track after a seek has completed in an attempt to get the strongest signal off the disk that it can. When it's disabled, you have to manually send commands to the servo to modify the offset, but when it's on, the offset will be automatically determined after every seek.
 #### H) View Track Offsets
@@ -374,22 +397,23 @@ Exactly the same as Fill Buffer With Pattern on the main menu, just placed here 
 #### Q) Show Command, Status, and Data Buffers
 Exactly the same as Show Command, Status, and Data Buffers on the main menu, just placed here as well for convenience.
 #### R) Return to Main Menu
-As I've said multiple times before, I would be pretty concerned if you couldn't figure this one out.
-
+As I've said multiple times before, I would be pretty concerned if you couldn't figure this one out.   
+<br />
+<br />
 The one submenu on the Widget-Specific Commands menu is:
 ### D) Send Servo Command Submenu
 As the name implies, this menu is dedicated to sending commands that directly communicate with the Widget servo board.
 Note that, given that all of these servo commands are sent directly to the servo board, they are completely transparent to the controller. This means that if we ask the servo to move the heads to a new track, the controller will still think they're at the old location. In order to bring the controller up to speed, we have to use a command like Seek or Send Restore that is actually processed by the controller.
 
-The menu looks like this:
+The servo menu looks like this:
 
-PICTURE
+<img width="541" alt="Servo_Menu" src="https://github.com/user-attachments/assets/9a14133b-6133-4f04-84df-79782ae8de66" />
 
 And here are the commands!
 #### 1) Soft Reset
 This is identical to Soft Reset on the Widget-Specific Commands menu; it's just included here for convenience since messing with the servo can break things and require a reset.
 #### 2) Reset Servo
-This is identical to Reset Servo on the Widget-Specific Commands menu; it's just included here for convenience since messing with the servo can break things and require a reset.
+Identical to Reset Servo on the Widget-Specific Commands menu.
 #### 3) Get Controller Status
 Once again, it's identical to the equivalent option on the Widget-Specific Commands menu.
 #### 4) Get Servo Status
@@ -401,11 +425,11 @@ And a final one for good measure. Since the servo deals with positioning the hea
 #### 7) Recal
 Just like the Send Restore option in the Widget-Specific Commands menu, except this one doesn't update the Widget controller's state to let it know the new position of the heads. For all it knows, the heads are still in the old location. As with Send Restore, this command has both Format and Data variants (see Send Restore for details).
 #### 8) Access
-Replace "Access" with "Seek", and you'll get a good idea of what this one does. It just moves the heads to a user-specified track. But, interestingly enough, the servo has no idea what track the heads are over at any given time; that state info is kept by the controller, but we're bypassing the controller here. So we specify our access value in terms of a relative distance from the current track. So saying "5" will move us 5 tracks forward from where we are right now, and saying "-3" will move us 3 tracks backward. The only way to do absolute positioning (without bringing the controller into things) is to send a data recal to bring us back to track zero, and then do mental math from there with the distances. Note that this command does not try to perform an auto-offset (discussed in the Set Auto-Offset option of the previous menu); it just puts the heads where it thinks the center of the track is, and calls it a day.
+Replace "Access" with "Seek", and you'll get a good idea of what this one does. It just moves the heads to a user-specified track. But, interestingly enough, the servo has no idea what track the heads are over at any given time; that state info is kept by the controller, but we're bypassing the controller here. So we specify our access value in terms of a relative distance from the current track. So saying "5" will move us 5 tracks forward from where we are right now, and saying "-3" will move us 3 tracks backward. The only way to do absolute positioning (without bringing the controller into things) is to send a data or format recal to bring us back to a known track, and then do mental math from there with the distances. Note that this command does not try to perform an auto-offset (discussed in the Set Auto-Offset option of the previous menu); it just puts the heads where it thinks the center of the track is, and calls it a day.
 #### 9) Access With Offset
 This is identical to the above, except once it seeks to the desired track, the servo performs an offset operation over the track. You can elect to either manually specify the offset or have it do an auto-offset to try and fine-tune the positioning of the heads and get them precisely positioned over the center of the track to maximize signal strength.
 #### A) Offset
-This command allows you to specify a manual offset instead of relying on auto-offset. This offset can be positive or negative (positive moves the heads off-center in one direction; negative in the other). I'm not actually sure what the bounds for the offset are, but I'd try to keep it small-ish; no more than +/- 20 hex sounds like a good limit to me.
+This command performs only an offset operation, without doing a seek first. This offset can be positive or negative (positive moves the heads off-center in one direction; negative in the other). I'm not actually sure what the bounds for the offset are, but I'd try to keep it small-ish; no more than +/- 20 hex sounds like a good limit to me.
 #### B) Home
 This command tells the servo to move the heads off the data surface of the disk and hold them really close to the spindle. It's basically the "Park Heads" command, but without letting the controller in on the fun since we're talking to the servo directly. Counterintuitively, this is NOT the command that you want to issue in order to get the heads into a known position; you want the Recal command for that. And note that the drive will start acting nonresponsive after sending this command, so you have to send it a Soft Reset afterwards in order to wake the drive back up again.
 #### C) Show Command, Status, and Data Buffers
@@ -415,7 +439,7 @@ This is the very last menu option. I've been typing for about 9 hours straight n
 
 # Desirable Features
 - Get the free space indicator working in the Selector. It's currently disabled and returns "????????" because it just takes way too long to count up the free space on larger SD cards (on the order of several seconds), which causes the Selector to freeze for that period of time whenever it requests the free space.
-- Add support for BLU and 5:1 interleave disk images without requiring conversion.
+- Add support for BLU 5:1 interleave disk images without requiring conversion.
 - Allow backing up and restoring images directly to the SD card instead of over XMODEM when in diagnostic mode. This way, backups and restores will be quicker and you can also immediately boot from your backup by switching to emulator mode!
 - Make a parallel card version of ESProFile. This design would take the 2-port parallel card and replace one (or both) of the ports with one (or two) ESProFile(s) built directly into the card. This would make for a really easy plug-in hard drive replacement for a lot of Lisa users, without any messy cables or mounting headaches. Due to being card-based, this version of ESProFile would not support diagnostic mode; the mode pin on the ESP32 that normally connects to the switch would be hard-wired for emulator mode only.
 
@@ -426,7 +450,4 @@ Let me know if you can think of anything else!
 Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsguy@gmail.com) if you need help, find any bugs, or have any questions/comments!
 
 # Changelog
-
-UPDATE AF README TO SAY DEPRECATED
-
-LINK TO HW/BOARDS FOLDER!!!!!!!
+1/20/2025 - Initial 1.0 Release
