@@ -253,7 +253,7 @@ void readDrive(){
     //char bytesFree[16];
     //ultoa(freeSpace, bytesFree, 10); // Convert the free space to a string
 
-    char bytesFree[] = "????????"; // Since we've disabled the free space indicator, just have it return "???????" instead
+    char bytesFree[] = "????????"; // Since we've disabled the free space indicator, just have it send "???????" instead
 
     int i;
     for(i = 0; i < 15; i++){ // Figure out how many digits are in the free space

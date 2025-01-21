@@ -70,7 +70,7 @@ void loop(){
 
 // The following are helper functions that are used in both ESProFile_Diagnostic.ino and ESProFile_Emulator.ino
 
-// Clears the screen by sending the ANSI escape codes for clearing the screen and moving the cursor to the top left
+// Clears the screen by sending the ANSI escape codes for clearing the screen and moving the cursor to the top-left
 void clearScreen(){
   Serial.write(27);
   Serial.print("[2J");

@@ -11366,7 +11366,7 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
   //DO TWO BACKUPS WITH THE SAME DELAYS AND COMPARE THE RESULTS TO SEE IF WE NEED DELAYS IN THE READ DMA TOO. THEN REDUCE DELAYS AND DO ANOTHER BACKUP TO SEE IF IT STILL WORKS. FOR A WRITE, DO WE NEED DELAYS WHEN DMAING TO THE DRIVE?
   //55 mins for the full sun20 transfer with 1ms delays.
   //39 mins for 1us delays. Assuming we read the whole disk block by block, the 20 1us delays will only add around 1s to the total read time.
-  //BLU takes 44 minutes to backup the whole disk at 115200. Double that time at 57600.
+  //BLU takes 44 minutes to backup the whole disk at 115200. Double that at 57600.
   //what would increasing the baud rate do?
   //make sure that things still work with ProFiles and Widgets too!
   
