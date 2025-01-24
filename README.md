@@ -1,5 +1,5 @@
 # ESProFile
-A powerful ESP32-based emulator and diagnostic tool for the ProFile and Widget families of hard drives.
+A powerful ESP32-based emulator and diagnostic tool for ProFile and Widget hard drives.
 
 ![IMG_1486](https://github.com/user-attachments/assets/cca3458e-213d-405e-afff-d3c4edb18b24)
 # Introduction
@@ -16,6 +16,19 @@ Given that ESProFile is essentially an evolution of ArduinoFile, it's easiest to
 - ArduinoFile was only available in an external version, while ESProFile is available in both an external version and an internal Widget replacement version that mounts right into the Widget drive bay!
 - I've selected the parts for ESProFile so that, if you order from JLCPCB, they can assemble the entire board for you for a really reasonable price. So once you get them in the mail, just pop your ESP32 into its socket, add a ribbon cable and SD card, and you'll be up and running!
 - ArduinoFile required that you upload different sets of firmware to the device in order to switch between emulator mode and diagnostic mode. But on ESProFile, thanks to the ESP32's larger flash memory, both sets of code are stored on the device simultaneously and you can swap between them at the flip of a switch!
+
+# Frequently-Asked Questions
+As people begin to ask questions about ESProFile, I'll start throwing the answers to the most noteworthy ones in here!
+## Q: I've heard that the ESP32 isn't 5V-tolerant. So why aren't you using level shifters?
+A very good question, and one that has been raised quite a few times with regards to my ESP32 projects over the years! So let's finally answer it. When picking a microcontroller to use when developing the successor to ArduinoFile, I had a couple of criteria, but one of the biggest was that the microcontroller be 5V tolerant so that I wouldn't have to use level shifters. My goal with this project was to make the board as simple and inexpensive as possible, and level shifters add both cost and complexity. Finding a microcontroller that was both fast and 5V-tolerant was actually really tough, but I eventually settled on the ESP32, even though they don't officially state its 5V-tolerance anywhere. I've got a couple reasons for this.
+
+I don't have a source that I can quickly link to for this, but I read that Espressif (the makers of the ESP32) used to state that the ESP32 was 5V-tolerant, but later removed this claim from their website, and this is what led to a lot of the confusion on the topic. Apparently a lot of people took this claim to mean that they could _power_ their ESP32 off 5V (which definitely _would_ fry it) and would get mad when it blew up, so Espressif just stopped claiming 5V-tolerance to avoid all the drama.
+
+I've also done some pretty extensive testing with ESP32s in a variety of 5V applications, and have never had a single problem. Plus, several other people have built my other ESP32 designs (although these designs aren't on GitHub) and they have used them extensively without any issues either. Just to be sure that I didn't get lucky with my ESP32s or anything, I've also been sure to buy from several different vendors at several different points in time, and every single one I've received has been rock-solid.
+
+Perhaps most convincingly, the CEO of Espressif himself actually [verified this on Facebook](https://www.facebook.com/groups/1499045113679103/permalink/1731855033731442) a few years ago! Scroll down and find the comment with over 100 likes where he refers to the ESP8266, and then read the replies to that comment to find his answer that's specific to the ESP32.
+
+One thing you'll notice when you search for info about ESP32 5V-tolerance is that some people say it works and others say it doesn't, but that not a single one of the people who says it won't work has actually tried it. They're all just saying that because they heard it from somewhere else or made some sort of assumption.
 
 # Building One
 With all that out of the way, let's talk about how to actually build an ESProFile!
@@ -120,14 +133,45 @@ We can now connect to the board using the Arduino IDE. Connect a Micro-USB cable
 
 <img width="752" alt="Board_Port" src="https://github.com/user-attachments/assets/2ccaa2ca-b6de-436e-8522-586a9cfe8763" />
 
-Before we actually upload the code, we need to configure an efuse within the ESP32. The ESProFile board holds the ESP32's pin 12 high at boot thanks to some pullup resistors, which has the unwanted side effect of telling the ESP32 to power its flash from 1.8V instead of 3.3V, preventing it from booting properly. By setting an efuse, we can tell it to ignore that pin and always power the flash from 3.3V, solving our problem. To do this, open a terminal window (macOS/Linux) or Command Prompt (Windows), type "python3 espefuse.py --port myPort set_flash_voltage 3.3V" and hit enter. Make sure to replace myPort with whatever port you just selected in the Arduino IDE. And if it doesn't recognize python3, try just typing "python" instead. It'll probably ask you to type "BURN" in order to confirm, and then you'll be done! I believe the efuse tool is installed automatically by the Arduino IDE on Windows, macOS, and Linux, but I can't say for sure because I don't have a Windows system and I've installed alternate versions of it manually on macOS and Linux, so just let me know if this doesn't work and I can help you out!
+Before we actually upload the code, we need to configure an efuse within the ESP32. The ESProFile board holds the ESP32's pin 12 high at boot thanks to some pullup resistors, which has the unwanted side effect of telling the ESP32 to power its flash from 1.8V instead of 3.3V, preventing it from booting properly. By using a tool to set an efuse, we can tell it to ignore that pin and always power the flash from 3.3V, solving our problem. Installing the proper tool, esptool, is slightly different depending on your OS.
+
+#### Windows
+Download the win64 version of esptool from [here](https://github.com/espressif/esptool/releases/) and extract it to a folder on your computer. Then open a Command Prompt and cd into whatever folder you just extracted everything to. Then type:
+```
+espefuse.exe --port myPort set_flash_voltage 3.3V
+```
+Replace myPort with whatever port you just selected in the Arduino IDE.
+
+#### macOS
+If you don't already have it, install Homebrew by opening a terminal and pasting in this command:
+```
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+Once it's installed, type:
+```
+brew install esptool
+```
+And then you can run the command:
+```
+espefuse --port myPort set_flash_voltage 3.3V
+```
+Replace myPort with whatever port you just selected in the Arduino IDE.
+
+#### Linux
+If you're a Linux user, you're probably technical enough that I don't really have to explain the installation process. Just install esptool using your package manager, and then type:
+```
+espefuse --port myPort set_flash_voltage 3.3V
+```
+Replace myPort with whatever port you just selected in the Arduino IDE.
+
+#### Finishing Up
+Note that, regardless of which OS you're using, espefuse may ask you to type "BURN" in order to confirm that you'd like to burn the efuse.
 
 Now that the efuse programming is complete, you can install the ESP32 into its socket on the ESProFile board. And burning an efuse is permanent, so you'll never need to mess with it again and you can do all future firmware updates without removing the ESP32 from your PCB.
 
 Now go back to the Arduino IDE, click the Upload button (the arrow in the upper-left corner of the screen), and wait for the firmware to be uploaded to your board. And that's it; your ESProFile is now flashed with its firmware!
 
 ### SD Card
-
 Before using ESProFile in emulator mode, you'll probably want to put some files onto the SD card to make your life easier. ESProFile supports the Selector (discussed later), which allows you to manage disk images right from your Lisa, so we need to put the Selector's files on the SD card if you want to use it (highly recommended). And regardless of whether or not you want to use the Selector, we need to format the SD card. So go ahead and format the card as FAT32, and then copy the contents of the SDTemplate folder over to the card if you want to use the Selector.
 
 Now we can talk about how to actually use this thing!
@@ -451,3 +495,7 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 
 # Changelog
 1/20/2025 - Initial 1.0 Release
+
+1/21/2025 - Added an FAQ section to the readme, and used it to answer a question about whether or not the ESP32 is 5V-tolerant.
+
+1/24/2025 - Replaced an out-of-stock resistor in the BOM, fixed an issue with the external PCB pick-and-place file that may have led to JLCPCB sending you a confirmation email, and rewrote the efuse section of the readme to make it easier to follow.
