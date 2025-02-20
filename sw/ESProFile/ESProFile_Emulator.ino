@@ -1,8 +1,11 @@
 //***********************************************************************************
-//* ESProFile ProFile Emulator Software v1.0                                        *
+//* ESProFile ProFile Emulator Software v1.1                                        *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
+
+// ******** Changelog ********
+// 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card
 
 // Watchdog timer write enable register and value
 #define TIMG1_WDT_WE 0x050D83AA1
@@ -71,7 +74,7 @@ void emulatorSetup(){
   EEPROM.commit();
   initPinsEmulator(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println("ESProFile Emulator Mode - Version 1.0"); // Print a welcome message
+  Serial.println("ESProFile Emulator Mode - Version 1.1"); // Print a welcome message
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   if(!SDCard.begin(SD_CS, SD_SCK_MHZ(10))){ // Initialize the SD card
     Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
@@ -139,29 +142,6 @@ void emulatorLoop() {
 
   interrupts(); // We're done with the fast part, so re-enable interrupts
 
-  // Old/simple way of printing raw commands for debugging
-  /*for(int i = 0; i < 6; i++){
-    printDataNoSpace(commandBuffer[i]);
-  }*/
-
-  // Time to print some debug info about the command we just received
-  if(commandBuffer[0] == 0x00){ // Read command
-    Serial.print("Read         Block: ");
-  }
-  else if(commandBuffer[0] == 0x01 or commandBuffer[0] == 0x02 or commandBuffer[0] == 0x03){ // Write command
-    Serial.print("Write        Block: ");
-  }
-  else{ // Unknown/bad command
-    Serial.print("Unknown      Block: ");
-  }
-  printDataNoSpace(commandBuffer[1]); // Now print the block number
-  printDataNoSpace(commandBuffer[2]);
-  printDataNoSpace(commandBuffer[3]);
-  Serial.print("        Retry Count: "); // The retry count
-  printDataNoSpace(commandBuffer[4]);
-  Serial.print("        Spare Threshold: "); // And the spare threshold
-  printDataNoSpace(commandBuffer[5]);
-
   if(commandBuffer[0] == 0x00){
     readDrive(); // If the first byte of the command is 0, then it's a read command
   }
@@ -171,6 +151,7 @@ void emulatorLoop() {
   }
 
   else{ // If we get some other command, stop and wait for the next handshake from the host
+    printCommand(); // Print the command that we didn't understand
     setParallelDir(1); // Set the bus to output mode
     delayMicroseconds(1);
     sendData(0x55); // Put an invalid value on the bus to show that we didn't understand the command
@@ -184,6 +165,7 @@ void readDrive(){
   delayMicroseconds(1);
   sendData(0x02); // Acknowledge the read command with an 0x02 (command value + 2)
   setBSY(); // And lower BSY to tell the host about our acknowledgement
+  printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
   currentTime = 0;
   while(readCMD() == 0){ // Wait for the host to raise CMD and timeout if it doesn't
     currentTime++;
@@ -604,6 +586,7 @@ void writeDrive(){
   delayMicroseconds(1);
   sendData(commandBuffer[0] + 0x02); // Acknowledge the write command by sending the command value + 2
   setBSY(); // And lower BSY to tell the host that we've acknowledged the command
+  printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
   currentTime = 0;
   while(readCMD() == 0){ // Wait for the host to raise CMD and timeout if it doesn't
     currentTime++;
@@ -970,6 +953,34 @@ void writeDrive(){
   if(halt == true){ // If we set the halt flag earlier, then we need to halt the ESProFile here
     while(1);
   }
+}
+
+// Prints whatever command the drive is currently executing
+void printCommand() {
+  // Old/simple way of printing raw commands for debugging
+  /*for(int i = 0; i < 6; i++){
+    printDataNoSpace(commandBuffer[i]);
+  }*/
+
+  // New way to print the command in a more human-readable format
+  if(commandBuffer[0] == 0x00){ // Read command
+    Serial.print("Read  Block: ");
+  }
+  else if(commandBuffer[0] == 0x01 or commandBuffer[0] == 0x02 or commandBuffer[0] == 0x03){ // Write command
+    Serial.print("Write Block: ");
+  }
+  else{ // Unknown/bad command
+    Serial.print("Unknown Command - Block: ");
+  }
+  printDataNoSpace(commandBuffer[1]); // Now print the block number
+  printDataNoSpace(commandBuffer[2]);
+  printDataNoSpace(commandBuffer[3]);
+
+  // We used to print the retry count and spare threshold, but it's kind of unnecessary for an emulator and wastes transmission time
+  /*Serial.print("        Retry Count: "); // The retry count
+  printDataNoSpace(commandBuffer[4]);
+  Serial.print("        Spare Threshold: "); // And the spare threshold
+  printDataNoSpace(commandBuffer[5]);*/
 }
 
 // Set all pins to the correct initial direction and state

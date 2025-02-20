@@ -499,3 +499,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 1/21/2025 - Added an FAQ section to the readme, and used it to answer a question about whether or not the ESP32 is 5V-tolerant.
 
 1/24/2025 - Replaced an out-of-stock resistor in the BOM, fixed an issue with the external PCB pick-and-place file that may have led to JLCPCB sending you a confirmation email, and rewrote the efuse section of the readme to make it more accurate and easier to follow.
+
+2/20/2025 - Emulator firmware release 1.1; fixed a bug where ESProFile would sometimes fail to respond when connected to a parallel card while running LOS 3. Also optimized the serial debug output for a very slight performance boost.
