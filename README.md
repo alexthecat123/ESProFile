@@ -91,9 +91,9 @@ The next screen gives you a summary of your order, which should be between $30-4
 
 Now you can just place your order and wait for the assembled boards to arrive!
 
-When I ordered my boards, they emailed me and asked me to confirm the placement of the Widget power connector on the internal version of the board since it only takes up half the footprint and looks a little confusing. So if you get this same email, just tell them that yes, it's correct as-is. If they email you asking to confirm anything else, and you're not sure what they're talking about, then feel free to email me!
+When I ordered my boards, they emailed me and asked me to confirm the placement of the Widget power connector on the internal version of the board since it only takes up half the footprint and looks a little confusing. So if you get this same email, just tell them that yes, it's correct as-is. If they email you asking to confirm anything else, and you're not sure what they're talking about, then feel free to contact me!
 
-If you've elected to assemble the board yourself, you can get all the parts you need from [this DigiKey list](https://www.digikey.com/en/mylists/list/T5290A3F90). This contains the parts for the internal version of the board with the debug header, and you can just omit parts depending on which version of the board you're building. If you're building an ESProFile that doesn't include the debug header, omit the 15-pin male header. If you're building the external version of ESProFile, omit the 8-pin 3.96mm pitch male header, the 26-pin (2x13) male header, the 1N4001 diode, and the 10uF capacitor. You can follow the schematics in the hw/schematics folder to better understand how everything goes together.
+If you've elected to assemble the board yourself, you can get all the parts you need from [this DigiKey list](https://www.digikey.com/en/mylists/list/T5290A3F90). This contains the parts for the internal version of the board with the debug header, and you can just omit parts depending on which version of the board you're building. If you're building an ESProFile that doesn't include the debug header, omit the 15-pin male header. If you're building the external version of ESProFile, omit the 8-pin 3.96mm pitch male header, the 26-pin (2x13) male header, the 2-pin male header, the 1N4001 diode, and the 10uF capacitor. You can follow the schematics in the hw/schematics folder to better understand how everything goes together.
 
 Regardless of whether you're getting the board pre-assembled or building it yourself, you'll need [an ESP32](https://www.amazon.com/dp/B07WCG1PLV) and [a microSD card](https://www.amazon.com/dp/B07R8GVGN9) (Lisa disk images are small, so any size is fine). Depending on your needs, you might also need to make an interface cable or two. If you're just planning on using ESProFile as a Widget replacement, then you won't need any cables. But you'll need to make [a ProFile cable](https://www.digikey.com/en/mylists/list/XJCXVWD9R8) if you're planning on using ESProFile as a ProFile replacement on a 2/5 (or if you're planning on connecting it to a ProFile in diagnostic mode). If you're also planning on connecting it to Widgets in diagnostic mode, you'll need to make [a Widget cable](https://www.digikey.com/en/mylists/list/S48Q9YR4S0) as well. The ProFile and Widget cables should look like the cables in the image below once you've put them together. Note the pin that you have to remove from the DB25 connector on the ProFile cable; on most Lisas, this pin is blocked off on the female connector.
 
@@ -108,6 +108,8 @@ If you made the internal version, then you'll probably want to mount it inside y
 ![IMG_1475](https://github.com/user-attachments/assets/bc143815-9c61-4cf8-9d1e-009c586f10ed)
 
 Once it's installed, just connect the Widget data cable to the connector on the board labeled Widget Data, and connect the Widget power cable to the connector labeled Widget Power. Note that the top four pins on the Widget power cable are unused, so align the bottom of the Widget power cable with the bottom of the connector. If you instead have a Lisa 2/5 that's set up for use with a Sun20, you'll still connect your data cable to the Widget Data connector, but for power, you'll connect your spare Twiggy cable to the header labeled Twiggy Power, just like how your Sun20 was wired up.
+
+If your drive cage has a fan and you want to power it (completely optional), then plug the fan into the Fan Power header on the bottom edge of the PCB. It should only fit one way!
 
 That's about it for the hardware side of things, so let's get into the software now!
 
@@ -501,3 +503,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 1/24/2025 - Replaced an out-of-stock resistor in the BOM, fixed an issue with the external PCB pick-and-place file that may have led to JLCPCB sending you a confirmation email, and rewrote the efuse section of the readme to make it more accurate and easier to follow.
 
 2/20/2025 - Emulator firmware release 1.1; fixed a bug where ESProFile would sometimes fail to respond when connected to a parallel card while running LOS 3. Also optimized the serial debug output for a very slight performance boost.
+
+2/21/2025 - Internal PCB version 1.1; added a fan header so that users have the option to power the Widget drive cage fan.
