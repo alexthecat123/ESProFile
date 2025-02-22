@@ -4,6 +4,9 @@
 //* Email address: alexelectronicsguy@gmail.com                                                               *
 //*************************************************************************************************************
 
+// ******** Changelog ********
+// 2/22/2025 - Inlined a few functions to improve performance during ProFile comms
+
 #include <Arduino.h> // Include the necessary libraries
 #include <SPI.h>
 #include "SdFat.h"
@@ -79,7 +82,7 @@ void clearScreen(){
 }
 
 // Sets the red and green sub-LEDs to the specified values
-void setLEDColor(bool r, bool g){
+inline __attribute__((__always_inline__)) void setLEDColor(bool r, bool g){
   // Set red if r is 1, clear it if r is 0
   if(r == 1){
     REG_WRITE(GPIO_OUT1_W1TS_REG, 0b1);
@@ -99,7 +102,7 @@ void setLEDColor(bool r, bool g){
 }
 
 // Sets the direction of the parallel bus
-void setParallelDir(bool dir){
+inline __attribute__((__always_inline__)) void setParallelDir(bool dir){
   if(dir == 0){ // Set to an input if dir is 0
     REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b11111111 << busOffset);
   }
@@ -109,18 +112,18 @@ void setParallelDir(bool dir){
 }
 
 // A user-friendly way to send data over the bus in less time-sensitive situations
-void sendData(uint8_t parallelBits){
+inline __attribute__((__always_inline__)) void sendData(uint8_t parallelBits){
   REG_WRITE(GPIO_OUT_W1TS_REG, parallelBits << busOffset); // Write W1TS with the data to set all the bits that need to be set
   REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~parallelBits << busOffset)); // Write W1TC with the inverted data to clear all the bits that need to be cleared
 }
 
 // A user-friendly way to receive data over the bus in less time-sensitive situations
-uint8_t receiveData(){
+inline __attribute__((__always_inline__)) uint8_t receiveData(){
   return REG_READ(GPIO_IN_REG) >> busOffset; // Return the 8-bit value on the bus
 }
 
 // Prints a byte in hex without a space following it
-void printDataNoSpace(uint8_t data){
+inline __attribute__((__always_inline__)) void printDataNoSpace(uint8_t data){
   Serial.print(data >> 4, HEX); // Print the high nibble
   Serial.print(data & 0x0F, HEX); // And the low nibble
 }

@@ -505,3 +505,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 2/20/2025 - Emulator firmware release 1.1; fixed a bug where ESProFile would sometimes fail to respond when connected to a parallel card while running LOS 3. Also optimized the serial debug output for a very slight performance boost.
 
 2/21/2025 - Internal PCB version 1.1; added a fan header so that users have the option to power the Widget drive cage fan.
+
+2/22/2025 - Emulator firmware release 1.2; improved general emulator performance by about 30% by making some tweaks to the SD card code, among other things. Selector copy operations are about 45% faster now, but still pretty painful for large disks!

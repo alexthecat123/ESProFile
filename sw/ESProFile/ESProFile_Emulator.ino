@@ -1,11 +1,12 @@
 //***********************************************************************************
-//* ESProFile ProFile Emulator Software v1.1                                        *
+//* ESProFile ProFile Emulator Software v1.2                                        *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
 
 // ******** Changelog ********
 // 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card
+// 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions
 
 // Watchdog timer write enable register and value
 #define TIMG1_WDT_WE 0x050D83AA1
@@ -23,6 +24,9 @@
 
 #define timeout 10000000 // Timeout value (in loop iterations) for all phases of ProFile comms except the initial handshake
 #define handshakeTimeout 1000000 // Timeout value for the initial handshake phase (should be shorter since the host intentionally times out here to detect the drive)
+
+SPIClass SD_SPI(HSPI); // These two lines make sure that we use hardware SPI at 20MHz for the SD card
+#define SD_CONFIG SdSpiConfig(SD_CS, DEDICATED_SPI, SD_SCK_MHZ(20), &SD_SPI)
 
 uint8_t blockData[536]; // The ProFile block that we're currently reading/writing, with status bytes too
 uint8_t commandBuffer[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // The 6-byte command that the ProFile is currently executing
@@ -47,7 +51,7 @@ File32 scratchFile; // A file that we use as an intermediate during certain disk
 File32 sourceFile; // Source and destination files for copy operations
 File32 destFile;
 FatFile rootDir; // The root directory of the SD card
-char buf[4096]; // A buffer that we use when copying files
+static char buf[65536]; // A buffer that we use when copying files
 
 char fileName[256]; // 256-character filename for disk images
 char extension[255] = ".image"; // The extension that the Selector will use for disk images
@@ -66,7 +70,7 @@ void emulatorSetup(){
   // We need to disable the interrupt watchdog timer; we disable interrupts for so long that the watchdog triggers and ruins everything
   REG_WRITE(TIMG1_WDT_WE_REG, TIMG1_WDT_WE); // Enable writing to the watchdog timer registers
   REG_CLR_BIT(TIMG1_WDT_CONF_REG, TIMG1_WDT_EN); // And clear the timer's enable bit to disable it
-  SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS); // Start comms with the SD card
+  SD_SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS); // Start comms with the SD card using our hardware SPI instance
   clearScreen(); // Clear the screen
   EEPROM.begin(3000); // Initialize the ESP32's EEPROM
   nonce = EEPROM.read(5); // And read the current nonce out of EEPROM
@@ -74,9 +78,9 @@ void emulatorSetup(){
   EEPROM.commit();
   initPinsEmulator(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println("ESProFile Emulator Mode - Version 1.1"); // Print a welcome message
+  Serial.println("ESProFile Emulator Mode - Version 1.2"); // Print a welcome message
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
-  if(!SDCard.begin(SD_CS, SD_SCK_MHZ(10))){ // Initialize the SD card
+  if(!SDCard.begin(SD_CONFIG)){ // Initialize the SD card with our hardware SPI instance
     Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
     while(1);
   }
@@ -92,15 +96,11 @@ void emulatorSetup(){
   Serial.println("ESProFile is ready!"); // And print a ready message
 }
 
-// this is us, a million little things, couples therapy, shrinking, somebody somewhere
-// player 2 10k is pretty sticky and player 1 1k too and player 1 10k
-
-
 void emulatorLoop() {
   clearBSY(); // Make sure we're not telling the host we're busy
   while(readCMD() == 1); // Wait for CMD to go low (the start of a ProFile handshake)
   setParallelDir(1); // Set the ProFile bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   sendData(0x01); // Send an 0x01 to the host
   setBSY(); // And lower BSY to acknowledge our presence
   currentTime = 0;
@@ -112,7 +112,7 @@ void emulatorLoop() {
     }
   }
   setParallelDir(0); // Now set the bus to input mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   currentTime = 0;
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     // Fun fact: if we don't get a 55 here, it probably means that the host was just trying to see if the drive is there, but didn't care about actually doing a data transfer
@@ -153,7 +153,7 @@ void emulatorLoop() {
   else{ // If we get some other command, stop and wait for the next handshake from the host
     printCommand(); // Print the command that we didn't understand
     setParallelDir(1); // Set the bus to output mode
-    delayMicroseconds(1);
+    //delayMicroseconds(1);
     sendData(0x55); // Put an invalid value on the bus to show that we didn't understand the command
     setBSY(); // And tell the host that it's there
   }
@@ -162,7 +162,7 @@ void emulatorLoop() {
 // Process and execute a read command
 void readDrive(){
   setParallelDir(1); // Set the bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   sendData(0x02); // Acknowledge the read command with an 0x02 (command value + 2)
   setBSY(); // And lower BSY to tell the host about our acknowledgement
   printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
@@ -175,7 +175,7 @@ void readDrive(){
     }
   }
   setParallelDir(0); // Set the bus to input mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   currentTime = 0;
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
@@ -431,7 +431,7 @@ void readDrive(){
         sprintf(buffer, "profile-backup-%d.image", replacementIndex);
       }
       Serial.print("Backing up current Selector to ");
-      Serial.print(replacementIndex);
+      Serial.print(buffer);
       Serial.println("...");
       disk.close();
       if(!sourceFile.open("profile.image", O_RDWR)){ // Now open profile.image as the source file
@@ -556,7 +556,7 @@ void readDrive(){
   }
 
   setParallelDir(1); // Now set the bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   for(int i = 0; i < readStatusOffset; i++){ // And set the 4 status bytes in blockData to 0x00 (no errors)
     blockData[i] = 0x00;
   }
@@ -583,7 +583,7 @@ void readDrive(){
 // Process and execute a write command
 void writeDrive(){
   setParallelDir(1); // Set the bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   sendData(commandBuffer[0] + 0x02); // Acknowledge the write command by sending the command value + 2
   setBSY(); // And lower BSY to tell the host that we've acknowledged the command
   printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
@@ -596,7 +596,7 @@ void writeDrive(){
     }
   }
   setParallelDir(0); // Set the bus to input mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   currentTime = 0;
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
@@ -622,7 +622,7 @@ void writeDrive(){
   interrupts(); // We're done with the time-sensitive part, so re-enable interrupts
 
   setParallelDir(1); // Set the bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   sendData(0x06); // Acknowledge the successful reception of the data block by sending an 0x06
   setBSY(); // And lower BSY to tell the host about our acknowledgement
   currentTime = 0;
@@ -634,7 +634,7 @@ void writeDrive(){
     }
   }
   setParallelDir(0); // Set the bus to input mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
   currentTime = 0;
   while(receiveData() != 0x55){ // And wait for the host to respond with an 0x55; timeout if it doesn't
     currentTime++;
@@ -756,14 +756,17 @@ void writeDrive(){
         }
         else{
           size_t n;
+          int startTime = millis(); // Then start a timer so we can tell the user how long the copy took
           // Now copy the source file into the destination file
           while ((n = sourceFile.read(buf, sizeof(buf))) > 0){
             destFile.write(buf, n);
           }
+          double totalTime = (millis() - startTime)/1000.0; // And calculate the total time it took
           nonce = EEPROM.read(5); // And increment the nonce and write it back to EEPROM
           EEPROM.write(5, nonce + 1);
           EEPROM.commit();
-          Serial.println(" Success!");
+          // Print out a success message with the time the copy took and the data rate
+          Serial.printf(" Success! The copy took %f seconds with a data rate of %f KB/s.\n", totalTime, (sourceFile.fileSize()/totalTime)/1024);
         }
       }
       sourceFile.close(); // Then close both the source and destination files
@@ -927,7 +930,7 @@ void writeDrive(){
     Serial.println(" - Error: Requested block is out of range!");
   }
   setParallelDir(1); // Now set the bus to output mode
-  delayMicroseconds(1);
+  //delayMicroseconds(1);
 
   // Fill the four status bytes in blockData with zeros (no errors)
   for(int i = writeStatusOffset; i < 536; i++){
@@ -1067,12 +1070,12 @@ void updateSpareTable(){
 
 // All of these functions just make it easier to set, clear, and read the control signals for the drive
 // Remember, all signals are active low
-void setBSY(){
+inline __attribute__((__always_inline__)) void setBSY(){
   setLEDColor(0, 0); // Setting BSY is special because it also turns off the LEDs
   REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << BSYPin); // In addition to setting BSY low
 }
 
-void clearBSY(){
+inline __attribute__((__always_inline__)) void clearBSY(){
   setLEDColor(0, 1); // Same for clearing BSY; we have to turn the green LED on
   REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << BSYPin); // As well as setting BSY high
 }
@@ -1088,18 +1091,18 @@ inline __attribute__((__always_inline__)) void clearPARITY(){
 }
 
 // The read functions just return the state of their corresponding control signals
-bool readCMD(){
+inline __attribute__((__always_inline__)) bool readCMD(){
   return bitRead(REG_READ(GPIO_IN_REG), CMDPin);
 }
 
-bool readRW(){
+inline __attribute__((__always_inline__)) bool readRW(){
   return bitRead(REG_READ(GPIO_IN_REG), RWPin);
 }
 
-bool readSTRB(){
+inline __attribute__((__always_inline__)) bool readSTRB(){
   return bitRead(REG_READ(GPIO_IN_REG), STRBPin);
 }
 
-bool readPRES(){
+inline __attribute__((__always_inline__)) bool readPRES(){
   return bitRead(REG_READ(GPIO_IN_REG), PRESPin);
 }
