@@ -507,3 +507,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 2/21/2025 - Internal PCB version 1.1; added a fan header so that users have the option to power the Widget drive cage fan.
 
 2/22/2025 - Emulator firmware release 1.2; improved general emulator performance by about 30% by making some tweaks to the SD card code, among other things. Selector copy operations are about 45% faster now, but still pretty painful for large disks!
+
+2/23/2025 - Fixed a typo in the readme where the Mac version of the espefuse command should've said "espefuse.py" instead of "espefuse".
