@@ -29,6 +29,10 @@ I've also done some pretty extensive testing with ESP32s in a variety of 5V appl
 Perhaps most convincingly, the CEO of Espressif himself actually [verified this on Facebook](https://www.facebook.com/groups/1499045113679103/permalink/1731855033731442) a few years ago! Scroll down and find the comment with over 100 likes where he refers to the ESP8266, and then read the replies to that comment to find his answer that's specific to the ESP32.
 
 One thing you'll notice when you search for info about ESP32 5V-tolerance is that some people say it works and others say it doesn't, but that not a single one of the people who says it won't work has actually tried it. They're all just saying that because they heard it from somewhere else or made some sort of assumption.
+## Q: Clearly ESProFile works with the Lisa, but does it work with the Apple ][ and Apple ///?
+The answer in the case of the Apple ][ is "I have no idea" because I don't actually have an Apple ][ ProFile interface card. But I would be pretty surprised if it didn't, and someone I know is working on testing this in the near future. If you've tried it, let me know so I can update this!
+
+Unfortunately, ESProFile does _not_ currently work with the Apple ///. I don't have my Apple /// with me right now, so I can't test it for myself, but I've had two people confirm this for me. Neither of them have the debug version of the board, so I don't have any data on why exactly it doesn't work, but I'm planning on looking into it once I'm reunited with my Apple /// again when I come home from college in May. Thanks to using DMA for ProFile data transfers, the Apple /// boasts the fastest transfer speeds of any ProFile-capable computer, so it's possible that it's just too fast and ESProFile can't keep up. Which would suck because the code is already pretty optimized and it would likely be impossible to fix. But it could also just be some weird timing thing in the bus handshaking, which would be completely fixable. We'll just have to wait and see. If you ordered the debug version of the board and want to hook it up to your logic analyzer and send me some traces of you trying to communicate with it from your Apple ///, then I'd love to take a look!
 
 # Building One
 With all that out of the way, let's talk about how to actually build an ESProFile!
@@ -101,11 +105,21 @@ Don't put the ESP32 into its socket yet; there's one thing we need to do down in
 
 ![IMG_1489](https://github.com/user-attachments/assets/e6ddb9e4-1dec-4146-b18f-54908e1c803c)
 
-If you made the internal version, then you'll probably want to mount it inside your Lisa's drive cage! First, remove any hard disk that's already in there, and then use two M3 x 10mm bolts and six M3 nuts to attach ESProFile to the side of your drive cage, using two of the original mounting holes for the Widget and the two large holes in the bottom of the ESProFile board. I got my nuts and bolts from [this assortment on Amazon](https://www.amazon.com/dp/B0BN297MP5). You'll want to mount ESProFile using the two frontmost holes on the right side of the drive cage, so that the status LED shines through the little transparent lens on your Lisa's front panel that the original Widget status LED also lined up with. Put the bolts through from the outside of the cage, and then screw a stack of two nuts onto the other side of each bolt. These will serve as standoffs to keep ESProFile from touching the side of the cage. Then slide ESProFile over the portion of the bolts that are still sticking out, and secure it in place with your final two nuts. I know this probably isn't the best mounting solution out there, but I've never claimed to be great with mounting hardware, so feel free to do something else if you have a better idea! Once you're done, it should look like the following pictures:
+Thanks to a nice little design by wottle on TinkerDifferent, you can 3D-print a case for your external ESProFile if you'd like! Just download the files in the hw/cad/External_Case folder and open them in your slicer to see what they look like. You'll be looking at two different versions of the case: one that has vents and another that doesn't. Just pick whichever one you prefer, and print the Case_Top and Case_Bottom for that version. Any material and print settings should be fine, although you might want to use supports if your printer is utterly terrible at bridging. Then your ESProFile should just slide right in, and you can secure it with a drop or two of hot glue (or not at all if you're okay with it rattling around a bit). Don't worry, I'm adding mounting holes to the board so that we'll have a much better solution than hot glue in the near future! The top should press-fit in place, and the finished product should look like one of the two cases in the following picture, depending on whether you picked the vented or unvented version:
+
+PHOTO
+
+If you made the internal version, then you'll probably want to mount it inside your Lisa's drive cage! There are two main ways to do this: my (somewhat questionable) original way, and a much improved 3D-printed mounting system designed by JustDaveIII on LisaList2. The only downside to the 3D-printed system is that the drive status LED doesn't line up with the little lens thing on the Lisa's front panel if you use it, so it's much harder to see drive activity than with my original method, but other than that it's pretty much perfect! His design also lets you mount your external ESProFile internally, if you ever wanted to do that for some reason.
+
+If you want do things my original way, then remove any hard disk that's already in the drive bay, and then use two M3 x 10mm bolts and six M3 nuts to attach ESProFile to the side of your drive cage, using two of the original mounting holes for the Widget and the two large holes in the bottom of the ESProFile board. I got my nuts and bolts from [this assortment on Amazon](https://www.amazon.com/dp/B0BN297MP5). You'll want to mount ESProFile using the two frontmost holes on the right side of the drive cage, so that the status LED shines through the little transparent lens on your Lisa's front panel that the original Widget status LED also lined up with. Put the bolts through from the outside of the cage, and then screw a stack of two nuts onto the other side of each bolt. These will serve as standoffs to keep ESProFile from touching the side of the cage. Then slide ESProFile over the portion of the bolts that are still sticking out, and secure it in place with your final two nuts. I know this probably isn't the best mounting solution out there, but I've never claimed to be great with mounting hardware, so feel free to do something else if you have a better idea! Once you're done, it should look like the following pictures:
 
 ![IMG_1490](https://github.com/user-attachments/assets/937983e4-920b-4883-bd9f-0778829440d0)
 
 ![IMG_1475](https://github.com/user-attachments/assets/bc143815-9c61-4cf8-9d1e-009c586f10ed)
+
+If you want to use JustDaveIII's 3D-printed bracket, then grab the files from the hw/cad/Drive_Bay_Mounts folder and open them in your slicer of choice. If you're planning on mounting an internal ESProFile (the most likely case), then just slice ESProFile_Widget_Bracket.stl. But if you're planning on mounting an external ESProFile board internally, then slice ESProFile_Widget_Bracket.stl as well as two copies of ESProFile_External_Drive_Bay_Mount.stl. Then go ahead and print them out (the files are so simple that pretty much any material and settings will work). Then, in the case of the internal ESProFile, you can mount it straight to the Widget bracket using three M3 bolts and nuts. If you've got an external ProFile, you'll first want to slide it into the grooves on the two small brackets that you printed, and then bolt the small brackets to the Widget bracket using four M3 nuts and bolts. Then use three M2 nuts and bolts to secure the Widget bracket to the right side (when looking at it from the front) of your drive cage. When mounted in this configuration, things will look like the following two pictures, depending on whether you followed this procedure with the internal or external version of ESProFile:
+
+PHOTOS
 
 Once it's installed, just connect the Widget data cable to the connector on the board labeled Widget Data, and connect the Widget power cable to the connector labeled Widget Power. Note that the top four pins on the Widget power cable are unused, so align the bottom of the Widget power cable with the bottom of the connector. If you instead have a Lisa 2/5 that's set up for use with a Sun20, you'll still connect your data cable to the Widget Data connector, but for power, you'll connect your spare Twiggy cable to the header labeled Twiggy Power, just like how your Sun20 was wired up.
 
@@ -155,7 +169,7 @@ brew install esptool
 ```
 And then you can run the command:
 ```
-espefuse --port myPort set_flash_voltage 3.3V
+espefuse.py --port myPort set_flash_voltage 3.3V
 ```
 Replace myPort with whatever port you just selected in the Arduino IDE.
 
@@ -175,6 +189,18 @@ Now go back to the Arduino IDE, click the Upload button (the arrow in the upper-
 
 ### SD Card
 Before using ESProFile in emulator mode, you'll probably want to put some files onto the SD card to make your life easier. ESProFile supports the Selector (discussed later), which allows you to manage disk images right from your Lisa, so we need to put the Selector's files on the SD card if you want to use it (highly recommended). And regardless of whether or not you want to use the Selector, we need to format the SD card. So go ahead and format the card as FAT32, and then copy the contents of the SDTemplate folder over to the card if you want to use the Selector.
+
+Note that you may encounter issues if you use a really cheap and/or slow SD card, especially after the v1.2 emulator update that improves access speeds. The most likely symptom of this is your status LED staying red, and an "SD card initialization failed!" error message printing out over the serial console. If you get this message, just try a faster SD card and everything should work fine. Pretty much anything from the big storage brands should be fine, including the one from PNY that I linked to earlier in the Hardware section. If the problem persists, then double-check that you formatted your card as FAT32 and not something else!
+
+If you don't care about speed and just really, really want to use the slow SD card that you have laying around, then don't worry, it's still absolutely possible with a simple change to the code! Just open the ESProFile_Emulator.ino file in the sw/ESProFile folder, and change the line that says:
+```
+#define SD_CONFIG SdSpiConfig(SD_CS, DEDICATED_SPI, SD_SCK_MHZ(20), &SD_SPI)
+```
+To:
+```
+#define SD_CONFIG SdSpiConfig(SD_CS, DEDICATED_SPI, SD_SCK_MHZ(10), &SD_SPI)
+```
+This tells ESProFile to clock the card at 10MHz instead of 20MHz, which should allow pretty much any SD card in existence to work, at the expense of a pretty significant amount of speed. If you make this change and it still doesn't work, then I would highly recommend that you get a new SD card!
 
 Now we can talk about how to actually use this thing!
 
@@ -509,3 +535,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 2/22/2025 - Emulator firmware release 1.2; improved general emulator performance by about 30% by making some tweaks to the SD card code, among other things. Selector copy operations are about 45% faster now, but still pretty painful for large disks!
 
 2/23/2025 - Fixed a typo in the readme where the Mac version of the espefuse command should've said "espefuse.py" instead of "espefuse".
+
+2/29/2025 - Added STL files for a 3D-printed drive bay mount by JustDaveIII and an external ESProFile case by wottle. Also added a note about potential problems with really cheap/slow SD cards and an FAQ question about Apple ][ and Apple /// compatibility.
