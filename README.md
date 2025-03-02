@@ -537,3 +537,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 2/23/2025 - Fixed a typo in the readme where the Mac version of the espefuse command should've said "espefuse.py" instead of "espefuse".
 
 2/29/2025 - Added STL files for a 3D-printed drive bay mount by JustDaveIII and an external ESProFile case by wottle. Also added a note about potential problems with really cheap/slow SD cards and an FAQ question about Apple ][ and Apple /// compatibility.
+
+3/2/2025 - External PCB version 1.1; added screwholes at the corners of the PCB to facilitate mounting in future case designs.
