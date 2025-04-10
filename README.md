@@ -30,7 +30,7 @@ Perhaps most convincingly, the CEO of Espressif himself actually [verified this 
 
 One thing you'll notice when you search for info about ESP32 5V-tolerance is that some people say it works and others say it doesn't, but that not a single one of the people who says it won't work has actually tried it. They're all just saying that because they heard it from somewhere else or made some sort of assumption.
 ## Q: Clearly ESProFile works with the Lisa, but does it work with the Apple ][ and Apple ///?
-The answer in the case of the Apple ][ is "I have no idea" because I don't actually have an Apple ][ ProFile interface card. But I would be pretty surprised if it didn't, and someone I know is working on testing this in the near future. If you've tried it, let me know so I can update this! 
+The answer in the case of the Apple ][ is "I have no idea" because I don't actually have an Apple ][ ProFile interface card. But I would be pretty surprised if it didn't, and someone I know is working on testing this in the near future. If you've tried it, let me know so I can update this!
 
 Update: Someone has now tested things with an Apple ][ and unfortunately it doesn't work. But I'm going to try and fix this as soon as I can, which should be by the summer at the latest!
 
@@ -129,7 +129,9 @@ If you want to do things my original way, then remove any hard disk that's alrea
 
 To use wottle's 3D-printed mounting system, download the ESProFile_Vertical_Mount.obj file from the hw/cad/wottle_Drive_Bay_Mount folder and open it in your slicer of choice. Slice it with whatever settings you want (it's so simple that anything should work) and print it out. Then mount things the same way that you would with my original mounting method, except use the 3D-printed bracket as a spacer instead of the two stacked nuts. You'll notice that the bracket has a third hole at the top. We can't screw into this from the outside because it would make it impossible to slide the drive cage into the Lisa properly, so instead screw an M3 x 6mm screw through the board and into the 3D-printed bracket from the inside of the drive cage. Once you're done, things should look like the following pictures:
 
-PHOTOS
+![IMG_1607](https://github.com/user-attachments/assets/9f14f217-df46-40b7-a264-9404ce6283d7)
+![IMG_1608](https://github.com/user-attachments/assets/57e0b5ab-ebb3-4dbe-a197-21c02d636ff2)
+![IMG_1609](https://github.com/user-attachments/assets/41ee7b5f-839c-4bad-bb7d-089db9e5f0e2)
 
 If you want to use JustDaveIII's 3D-printed bracket, then grab the files from the hw/cad/JustDaveIII_Drive_Bay_Mounts folder and open them in your slicer of choice. If you're planning on mounting an internal ESProFile (the most likely case), then just slice ESProFile_Widget_Bracket.stl. But if you're planning on mounting an external ESProFile board internally, then slice ESProFile_Widget_Bracket.stl as well as two copies of ESProFile_External_Drive_Bay_Mount.stl. Then go ahead and print them out (the files are so simple that pretty much any material and settings will work). Then, in the case of the internal ESProFile, you can mount it straight to the Widget bracket using three M3 bolts and nuts. If you've got an external ProFile, you'll first want to slide it into the grooves on the two small brackets that you printed, and then bolt the small brackets to the Widget bracket using four M3 nuts and bolts. Then use three M2 nuts and bolts to secure the Widget bracket to the right side (when looking at it from the front) of your drive cage. When mounted in this configuration, things will look like the following two pictures, depending on whether you followed this procedure with the internal or external version of ESProFile:
 
