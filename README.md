@@ -295,7 +295,7 @@ Reads every block on your drive and compares the contents of each block with the
 #### B) Search Entire Drive For String
 Allows you to search the entirety of your drive for a string of hex bytes, a string of text, or the full contents of the data buffer. It will ask you which of these you want to search for, and then ask you for your desired string if you choose one of the first two. Then sit back and wait while it searches the drive. It will print the block numbers where it found any matches as it goes.
 #### C) Backup Entire Drive
-Backs up the entire contents of your drive to your modern computer over serial. The backup occurs over XMODEM to add error checking, so make sure that your terminal program supports it! When ESProFile asks you to start your XMODEM receiver, do as it says, and make sure that you've selected Checksum as the form of error checking that it uses. Now just wait (for quite a long time) for the transfer to complete. The image that it creates is compatible with ESProFile in emulator mode, so you can just copy it right over to your SD card and immediately start emulating the drive!
+Backs up the entire contents of your drive to your modern computer over serial. The backup occurs over XMODEM to add error checking, so make sure that your terminal program supports it! When ESProFile asks you to start your XMODEM receiver, do as it says, and make sure that you've selected CRC as the form of error checking that it uses. Now just wait (for quite a long time) for the transfer to complete. The image that it creates is compatible with ESProFile in emulator mode, so you can just copy it right over to your SD card and immediately start emulating the drive!
 #### D) Restore Drive From Backup
 Restores a drive from a backup that was previously created using C). Just like backups, this uses XMODEM, so start your terminal software's XMODEM sender when prompted and select your desired image file. Make sure that your XMODEM sender is configured to send using a 1K block size, and hit start! Now wait for a while, and your drive should be good to go!
 #### E) Show Command, Status, and Data Buffers
@@ -565,3 +565,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 3/19/2025 - Updated external case with screwholes to accomodate the v1.1 PCB, and added a new 3D-printed internal ESProFile mount by wottle on TinkerDifferent.
 
 4/9/2025 - Added STL files for a ProFile-shaped ESProFile case by Michael Schaffer. Also updated the note about Apple ][ compatibility to reflect a recent report that I got from someone.
+
+6/4/2025 - Fixed a typo in the readme where I accidentally said that you should use checksum error checking when performing XMODEM disk backups with ESProFile, when you should actually use CRC instead.
