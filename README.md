@@ -19,6 +19,10 @@ Given that ESProFile is essentially an evolution of ArduinoFile, it's easiest to
 
 # Frequently-Asked Questions
 As people begin to ask questions about ESProFile, I'll start throwing the answers to the most noteworthy ones in here!
+
+## Q: I don't want to (or don't have the tools, etc) to install an OS onto my ESProFile from scratch. Can you provide a ready-to-go disk image?
+Of course! I've uploaded preinstalled ESProFile images for every major Lisa OS [right here](https://mega.nz/folder/hxBXXKyA#KQHomG_6NikZonALWmdTCA). The LOS images are patched so that the serial number check is disabled, meaning that the apps will run on any Lisa, regardless of its serial number. And note that the Xenix 5MB image will only work on a Lisa 2/5 and the Xenix 10MB image will only work on a 2/10.
+
 ## Q: I've heard that the ESP32 isn't 5V-tolerant. So why aren't you using level shifters?
 A very good question, and one that has been raised quite a few times with regards to my ESP32 projects over the years! So let's finally answer it. When picking a microcontroller to use when developing the successor to ArduinoFile, I had a couple of criteria, but one of the biggest was that the microcontroller be 5V tolerant so that I wouldn't have to use level shifters. My goal with this project was to make the board as simple and inexpensive as possible, and level shifters add both cost and complexity. Finding a microcontroller that was both fast and 5V-tolerant was actually really tough, but I eventually settled on the ESP32, even though they don't officially state its 5V-tolerance anywhere. I've got a couple reasons for this.
 
@@ -567,3 +571,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 4/9/2025 - Added STL files for a ProFile-shaped ESProFile case by Michael Schaffer. Also updated the note about Apple ][ compatibility to reflect a recent report that I got from someone.
 
 6/4/2025 - Fixed a typo in the readme where I accidentally said that you should use checksum error checking when performing XMODEM disk backups with ESProFile, when you should actually use CRC instead.
+
+7/20/2025 - Added an FAQ entry that links to some ready-to-go ESProFile images, in case you don't want to install an OS yourself.
