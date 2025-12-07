@@ -1,5 +1,5 @@
 //***********************************************************************************
-//* ESProFile ProFile Emulator Software v1.2                                        *
+//* ESProFile ProFile Emulator Software v1.3                                        *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
@@ -7,6 +7,7 @@
 // ******** Changelog ********
 // 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card
 // 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions
+// 11/14/2025 - v1.3 - Fixed a bug where ESProFile wouldn't respond in time to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs, as well as a bug where a botched LOS 1.0 shutdown under the Rev. C ROMs would lead to an Error 85 on the next boot attempt.
 
 // Watchdog timer write enable register and value
 #define TIMG1_WDT_WE 0x050D83AA1
@@ -78,7 +79,7 @@ void emulatorSetup(){
   EEPROM.commit();
   initPinsEmulator(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println("ESProFile Emulator Mode - Version 1.2"); // Print a welcome message
+  Serial.println("ESProFile Emulator Mode - Version 1.3"); // Print a welcome message
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   if(!SDCard.begin(SD_CONFIG)){ // Initialize the SD card with our hardware SPI instance
     Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
@@ -94,6 +95,7 @@ void emulatorSetup(){
   updateSpareTable(); // If all this succeeds, update the spare table to reflect the attributes of the current disk image
   setLEDColor(0, 1); // Make the LED green to show that the ESProFile is ready
   Serial.println("ESProFile is ready!"); // And print a ready message
+  noInterrupts(); // We need speed here and can't let FreeRTOS preempt us (can be up to 2ms of delay), so disable interrupts
 }
 
 void emulatorLoop() {
@@ -118,7 +120,9 @@ void emulatorLoop() {
     // Fun fact: if we don't get a 55 here, it probably means that the host was just trying to see if the drive is there, but didn't care about actually doing a data transfer
     // The Lisa does this at boot time to see if a ProFile is present
     currentTime++;
-    if(currentTime >= handshakeTimeout){
+    // Certain Lisa ROMs (like Rev. C) ask if the drive is there, but then proceed to send a command afterwards so fast that the timeount doesn't have time to trigger
+    // So also break out of this loop if CMD goes low again, indicating the start of another command
+    if(currentTime >= handshakeTimeout || readCMD() == 0){
       //Serial.println("Phase 1: Host didn't respond with a 55! Maybe the drive was reset?");
       return;
     }
@@ -128,10 +132,9 @@ void emulatorLoop() {
   for(int i = 0; i < 6; i++){ // And zero the whole thing out, in case this command ends up being less than 6 bytes
     commandBuffer[i] = 0;
   }
-  noInterrupts(); // We need speed here, and can't let FreeRTOS preempt us, so disable interrupts
   clearBSY(); // Raise BSY to show that we're ready to receive a command
 
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ // Stay in the command-reception loop until the host lowers CMD
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the command-reception loop until the host lowers CMD or the drive is reset
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
     if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, read the bus and store the data in the command buffer
       commandBuffer[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
@@ -139,8 +142,6 @@ void emulatorLoop() {
     }
     prevState = currentState; // Update the previous state of STRB
   }
-
-  interrupts(); // We're done with the fast part, so re-enable interrupts
 
   if(commandBuffer[0] == 0x00){
     readDrive(); // If the first byte of the command is 0, then it's a read command
@@ -564,11 +565,9 @@ void readDrive(){
   sendParity(blockData[bufferIndex]); // Put the parity for the first byte on the bus
   sendData(blockData[bufferIndex++]); // Followed by the byte itself, and increment the buffer index
 
-  noInterrupts(); // Now we're going to send the rest of the block and care about speed, so disable interrupts
-
   clearBSY(); // And raise BSY to tell the host that we're ready
 
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ // Stay in the data-sending loop until the host lowers CMD
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the data-sending loop until the host lowers CMD or the drive is reset
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
     if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next byte of the block
       sendParity(blockData[bufferIndex]); // Send the parity for the byte
@@ -577,7 +576,6 @@ void readDrive(){
     }
     prevState = currentState; // Update the previous state of STRB
   }
-  interrupts(); // We're done with the read operation now, so re-enable interrupts
 }
 
 // Process and execute a write command
@@ -607,10 +605,9 @@ void writeDrive(){
   }
 
   bufferIndex = 0; // Reset the blockData buffer index
-  noInterrupts(); // It's time to receive the data block that we need to write, so disable interrupts
   clearBSY(); // Raise BSY to tell the host that we're ready to receive the data
  
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ // Stay in the data-receiving loop until the host lowers CMD
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the data-receiving loop until the host lowers CMD or the drive is reset
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
     if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, it means the data is valid
       blockData[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset; // So read the data from the bus into the blockData buffer
@@ -618,8 +615,6 @@ void writeDrive(){
     }
     prevState = currentState; // Update the previous state of STRB
   }
-
-  interrupts(); // We're done with the time-sensitive part, so re-enable interrupts
 
   setParallelDir(1); // Set the bus to output mode
   //delayMicroseconds(1);
@@ -941,10 +936,9 @@ void writeDrive(){
   sendParity(blockData[bufferIndex]); // Put its parity info on the PARITY line
   sendData(blockData[bufferIndex++]); // And put the status byte on the bus, incrementing the buffer index afterwards
 
-  noInterrupts(); // We're about to send the remaining status bytes, so disable interrupts just to be safe
   clearBSY(); // Raise BSY to tell the host that we're ready to continue
 
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1){ // Stay in the byte-sending loop until the host lowers CMD
+  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the byte-sending loop until the host lowers CMD or the drive is reset
     currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
     if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next status byte
       sendParity(blockData[bufferIndex]); // Set the parity data for the status byte

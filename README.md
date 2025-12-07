@@ -575,3 +575,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 7/20/2025 - Added an FAQ entry that links to some ready-to-go ESProFile images, in case you don't want to install an OS yourself.
 
 10/5/2025 - Added a guide to the SDTemplate directory written by @bmwcyclist on LisaList2 explaining how to create blank ESProFile disk images.
+
+11/14/2025 - Fixed a bug where ESProFile would take too long to respond to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs.
