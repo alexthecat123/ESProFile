@@ -1,8 +1,11 @@
 //***********************************************************************************
-//* ESProFile ProFile Diagnostic Software v1.0                                      *
+//* ESProFile ProFile Diagnostic Software v1.1                                      *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
+
+// 12/9/2025 - v1.1 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile.
+
 
 /* Desirable Features
 Allow the tester to also back an image up to the SD card; you get to type a fileame, it checks if it exists, and then goes to work. It also prints a directory for you before prompting you to give a name
@@ -539,7 +542,7 @@ bool widgetServoMenu = false;
 void mainMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -570,7 +573,7 @@ void mainMenu(){
 void testSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -593,7 +596,7 @@ void testSubMenu(){
 void Z8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -622,7 +625,7 @@ void Z8SubMenu(){
 void tenMegZ8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -655,7 +658,7 @@ void tenMegZ8SubMenu(){
 void widgetSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -695,7 +698,7 @@ void widgetSubMenu(){
 void servoSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.0");
+  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -11176,17 +11179,17 @@ PB 13 12 11 10 9 8*/
 
 
 void initPinsDiag(){
-  for(int i = busOffset; i < busOffset + 8; i++){
+  for(int i = dataBusStart; i < dataBusStart + 8; i++){
     pinMode(i, INPUT);
   }
-  pinMode(CMDPin, OUTPUT);
-  pinMode(BSYPin, INPUT);
-  pinMode(RWPin, OUTPUT);
-  pinMode(STRBPin, OUTPUT);
-  pinMode(PRESPin, OUTPUT);
-  pinMode(PARITYPin, INPUT);
-  pinMode(red, OUTPUT);
-  pinMode(green, OUTPUT);
+  pinMode(CMD_Pin, OUTPUT);
+  pinMode(BSY_Pin, INPUT);
+  pinMode(RW_Pin, OUTPUT);
+  pinMode(STRB_Pin, OUTPUT);
+  pinMode(PRES_Pin, OUTPUT);
+  pinMode(PARITY_Pin, INPUT);
+  pinMode(red_led, OUTPUT);
+  pinMode(green_led, OUTPUT);
 
   clearCMD();
   clearRW();
@@ -11206,54 +11209,54 @@ void halt(){
 }
 
 void setCMD(){
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << CMDPin);
+  REG_WRITE(CMD_W1TC_REG, 0b1 << CMDPin);
   //PORTC = PORTC & B11111110;
 }
 
 void clearCMD(){
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << CMDPin);
+  REG_WRITE(CMD_W1TS_REG, 0b1 << CMDPin);
   //PORTC = PORTC | B00000001;
 }
 
 void setRW(){
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << RWPin);
+  REG_WRITE(RW_W1TC_REG, 0b1 << RWPin);
   //PORTC = PORTC & B11111011;
 }
 
 void clearRW(){
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << RWPin);
+  REG_WRITE(RW_W1TS_REG, 0b1 << RWPin);
   //PORTC = PORTC | B00000100;
 }
 
 void setSTRB(){
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << STRBPin);
+  REG_WRITE(STRB_W1TC_REG, 0b1 << STRBPin);
   //PORTC = PORTC & B11110111;
 }
 
 void clearSTRB(){
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << STRBPin);
+  REG_WRITE(STRB_W1TS_REG, 0b1 << STRBPin);
   //PORTC = PORTC | B00001000;
 }
 void setPRES(){
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << PRESPin);
+  REG_WRITE(PRES_W1TC_REG, 0b1 << PRESPin);
   //PORTC = PORTC & B11101111;
 }
 
 void clearPRES(){
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << PRESPin);
+  REG_WRITE(PRES_W1TS_REG, 0b1 << PRESPin);
   //PORTC = PORTC | B00010000;
 }
 
 bool readBsy(){
-  REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << BSYPin);
-  return bitRead(REG_READ(GPIO_IN_REG), BSYPin);
+  REG_WRITE(BSY_ENABLE_W1TC_REG, 0b1 << BSYPin);
+  return bitRead(REG_READ(BSY_IN_REG), BSYPin);
   //DDRC = DDRC & B11111101;
   //return bitRead(PINC, 1);
 }
 
 bool readParity(){
-  REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b1 << PARITYPin);
-  return bitRead(REG_READ(GPIO_IN_REG), PARITYPin);
+  REG_WRITE(PARITY_ENABLE_W1TC_REG, 0b1 << PARITYPin);
+  return bitRead(REG_READ(PARITY_IN_REG), PARITYPin);
   //DDRC = DDRC & B11011111;
   //return bitRead(PINC, 5);
 }

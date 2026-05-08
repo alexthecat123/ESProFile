@@ -1,47 +1,29 @@
 //*************************************************************************************************************
-//* ESProFile - A powerful ESP32-based emulator and diagnostic tool for the ProFile family of hard drives.    *                               *
+//* ESProFile - A powerful ESP32-based emulator and diagnostic tool for the ProFile family of hard drives.    *
 //* By: Alex Anderson-McLeod                                                                                  *
 //* Email address: alexelectronicsguy@gmail.com                                                               *
 //*************************************************************************************************************
 
 // ******** Changelog ********
-// 2/22/2025 - Inlined a few functions to improve performance during ProFile comms
+// 2/22/2025 - Inlined a few functions to improve performance during ProFile comms.
+// 4/19/2026 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile. Also cached the ProFile read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
 
 #include <Arduino.h> // Include the necessary libraries
 #include <SPI.h>
 #include "SdFat.h"
 #include "sdios.h"
 #include "EEPROM.h"
-
-// Common pin definitions for both diagnostic and emulation modes
-
-// SD card pins
-#define SD_CLK  5 
-#define SD_MISO 34
-#define SD_MOSI 2
-#define SD_CS   33
-
-// ProFile bus pins
-#define busOffset 12
-#define CMDPin 21
-#define BSYPin 22
-#define RWPin 23
-#define STRBPin 25
-#define PRESPin 26
-#define PARITYPin 27
-
-// Pins for the red and green LEDs
-#define red 32
-#define green 4
-
-#define switchPin 35 // Pin for the switch that selects between diagnostic and emulation modes
+// Include this pin definition file if you've got a standard ESProFile board
+//#include "PinDefs_ESProFile.h"
+// But include this one instead if you're using the ESProFile that's built into the LisaFPGA board
+#include "PinDefs_LisaFPGA.h"
 
 // The entire purpose of this file is to pick whether we want to run ESProFile_Diagnostic.ino or ESProFile_Emulator.ino
 void setup(){
-  pinMode(switchPin, INPUT); // Set the switch pin to an input
-  bool switchState = digitalRead(switchPin); // Read its state
-  pinMode(red, OUTPUT); // Set the red LED to an output
-  pinMode(green, OUTPUT); // And the green LED too
+  pinMode(switch_pin, INPUT); // Set the switch pin to an input
+  bool switchState = digitalRead(switch_pin); // Read its state
+  pinMode(red_led, OUTPUT); // Set the red LED to an output
+  pinMode(green_led, OUTPUT); // And the green LED too
   Serial.begin(115200); // Start serial comms
   clearScreen(); // Clear the screen
   setLEDColor(1, 0); // Make the LED red to show that ESProFile is initializing
@@ -85,41 +67,39 @@ void clearScreen(){
 inline __attribute__((__always_inline__)) void setLEDColor(bool r, bool g){
   // Set red if r is 1, clear it if r is 0
   if(r == 1){
-    REG_WRITE(GPIO_OUT1_W1TS_REG, 0b1);
+    analogWrite(red_led, red_pwm_duty); // If r is 1, set the duty cycle to the desired value to turn the red LED on
   }
   else if(r == 0){
-    REG_WRITE(GPIO_OUT1_W1TC_REG, 0b1);
+    analogWrite(red_led, 0); // Else, set the duty cycle to 0% to turn the red LED off
   }
   // For green, we have to use PWM since the LED is painfully bright otherwise
   if(g == 1){
-    analogWrite(green, 10); // If g is 1, set the duty cycle to 5%-ish to put the green LED at a reasonable/pleasant brightness
-    //REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << green);
+    analogWrite(green_led, green_pwm_duty); // If g is 1, set the duty cycle to the desired value to turn the green LED on
   }
   else if (g == 0){
-    analogWrite(green, 0); // Else, set the duty cycle to 0% to turn the green LED off
-    //REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << green);
+    analogWrite(green_led, 0); // Else, set the duty cycle to 0% to turn the green LED off
   }
 }
 
 // Sets the direction of the parallel bus
 inline __attribute__((__always_inline__)) void setParallelDir(bool dir){
   if(dir == 0){ // Set to an input if dir is 0
-    REG_WRITE(GPIO_ENABLE_W1TC_REG, 0b11111111 << busOffset);
+    REG_WRITE(BUS_ENABLE_W1TC_REG, 0b11111111 << busOffset);
   }
   else if(dir == 1){ // And an output if dir is 1
-    REG_WRITE(GPIO_ENABLE_W1TS_REG, 0b11111111 << busOffset);
+    REG_WRITE(BUS_ENABLE_W1TS_REG, 0b11111111 << busOffset);
   }
 }
 
 // A user-friendly way to send data over the bus in less time-sensitive situations
 inline __attribute__((__always_inline__)) void sendData(uint8_t parallelBits){
-  REG_WRITE(GPIO_OUT_W1TS_REG, parallelBits << busOffset); // Write W1TS with the data to set all the bits that need to be set
-  REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~parallelBits << busOffset)); // Write W1TC with the inverted data to clear all the bits that need to be cleared
+  REG_WRITE(BUS_W1TS_REG, parallelBits << busOffset); // Write W1TS with the data to set all the bits that need to be set
+  REG_WRITE(BUS_W1TC_REG, ((byte)~parallelBits << busOffset)); // Write W1TC with the inverted data to clear all the bits that need to be cleared
 }
 
 // A user-friendly way to receive data over the bus in less time-sensitive situations
 inline __attribute__((__always_inline__)) uint8_t receiveData(){
-  return REG_READ(GPIO_IN_REG) >> busOffset; // Return the 8-bit value on the bus
+  return REG_READ(BUS_IN_REG) >> busOffset; // Return the 8-bit value on the bus
 }
 
 // Prints a byte in hex without a space following it

@@ -1,5 +1,5 @@
 //***********************************************************************************
-//* ESProFile ProFile Emulator Software v1.3                                        *
+//* ESProFile ProFile Emulator Software v1.4                                        *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
@@ -8,14 +8,7 @@
 // 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card
 // 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions
 // 11/14/2025 - v1.3 - Fixed a bug where ESProFile wouldn't respond in time to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs, as well as a bug where a botched LOS 1.0 shutdown under the Rev. C ROMs would lead to an Error 85 on the next boot attempt.
-
-// Watchdog timer write enable register and value
-#define TIMG1_WDT_WE 0x050D83AA1
-#define TIMG1_WDT_WE_REG 0x3FF60064
-
-// Watchdog timer configuration register and enable bit
-#define TIMG1_WDT_CONF_REG 0x3FF60048
-#define TIMG1_WDT_EN 1 << 31
+// 4/19/2026 - v1.4 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile. Also cached the ProFile read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
 
 #define readStatusOffset 4 // Status bytes are bytes 0-3 of blockData during a read
 #define writeStatusOffset 532 // And bytes 532-535 during a write
@@ -79,7 +72,7 @@ void emulatorSetup(){
   EEPROM.commit();
   initPinsEmulator(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println("ESProFile Emulator Mode - Version 1.3"); // Print a welcome message
+  Serial.println("ESProFile Emulator Mode - Version 1.4"); // Print a welcome message
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   if(!SDCard.begin(SD_CONFIG)){ // Initialize the SD card with our hardware SPI instance
     Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
@@ -134,14 +127,7 @@ void emulatorLoop() {
   }
   clearBSY(); // Raise BSY to show that we're ready to receive a command
 
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the command-reception loop until the host lowers CMD or the drive is reset
-    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
-    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, read the bus and store the data in the command buffer
-      commandBuffer[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset;
-      sendParity(commandBuffer[bufferIndex++]); // Send the parity bit out for that byte, and increment bufferIndex to the next spot in the buffer
-    }
-    prevState = currentState; // Update the previous state of STRB
-  }
+  receiveCommand(); // Now receive the command from the host
 
   if(commandBuffer[0] == 0x00){
     readDrive(); // If the first byte of the command is 0, then it's a read command
@@ -157,6 +143,46 @@ void emulatorLoop() {
     //delayMicroseconds(1);
     sendData(0x55); // Put an invalid value on the bus to show that we didn't understand the command
     setBSY(); // And tell the host that it's there
+  }
+}
+
+// This function sends multiple bytes of data in a row out of blockData, with the appropriate parity bits for each one
+// We stick it in IRAM (and thus make it a separate function) to speed it up and avoid cache misses that would happen otherwise
+// That wouldn't normally be a problem, but when LisaFPGA is running at 75MHz, timings are tight enough that cache misses break things
+// The symptom is that the very first read op doesn't work, but subsequent ones do once this code is cached into IRAM
+IRAM_ATTR void sendMultiData() {
+  while(bitRead(REG_READ(CMD_IN_REG), CMDPin) == 1 && bitRead(REG_READ(PRES_IN_REG), PRESPin) == 1){ // Stay in the data-sending loop until the host lowers CMD or the drive is reset
+    currentState = bitRead(REG_READ(STRB_IN_REG), STRBPin); // Read the current state of STRB
+    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next byte
+      sendParity(blockData[bufferIndex]); // Send the parity for the byte
+      REG_WRITE(BUS_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
+      REG_WRITE(BUS_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // Then write the inverse of the byte into W1TC to clear all the bits that need to be cleared, and increment the buffer index
+    }
+    prevState = currentState; // Update the previous state of STRB
+  }
+}
+
+// This function receives bytes from the host to form the command buffer, and is in IRAM for the same reason as sendMultiData
+IRAM_ATTR void receiveCommand() {
+  while(bitRead(REG_READ(CMD_IN_REG), CMDPin) == 1 && bitRead(REG_READ(PRES_IN_REG), PRESPin) == 1){ // Stay in the command-reception loop until the host lowers CMD or the drive is reset
+    currentState = bitRead(REG_READ(STRB_IN_REG), STRBPin); // Read the current state of STRB
+    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, read the bus and store the data in the command buffer
+      commandBuffer[bufferIndex] = REG_READ(BUS_IN_REG) >> busOffset;
+      sendParity(commandBuffer[bufferIndex++]); // Send the parity bit out for that byte, and increment bufferIndex to the next spot in the buffer
+    }
+    prevState = currentState; // Update the previous state of STRB
+  }
+}
+
+// Another byte-receiving function, also in IRAM, but this one is for receiving data during a write command
+IRAM_ATTR void receiveMultiData() {
+  while(bitRead(REG_READ(CMD_IN_REG), CMDPin) == 1 && bitRead(REG_READ(PRES_IN_REG), PRESPin) == 1){ // Stay in the data-receiving loop until the host lowers CMD or the drive is reset
+    currentState = bitRead(REG_READ(STRB_IN_REG), STRBPin); // Read the current state of STRB
+    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, it means the data is valid
+      blockData[bufferIndex] = REG_READ(BUS_IN_REG) >> busOffset; // So read the data from the bus into the blockData buffer
+      sendParity(blockData[bufferIndex++]); // And send the appropriate parity for this byte, followed by incrementing the buffer index
+    }
+    prevState = currentState; // Update the previous state of STRB
   }
 }
 
@@ -557,25 +583,14 @@ void readDrive(){
   }
 
   setParallelDir(1); // Now set the bus to output mode
-  //delayMicroseconds(1);
   for(int i = 0; i < readStatusOffset; i++){ // And set the 4 status bytes in blockData to 0x00 (no errors)
     blockData[i] = 0x00;
   }
   bufferIndex = 0; // Reset the blockData buffer index
   sendParity(blockData[bufferIndex]); // Put the parity for the first byte on the bus
   sendData(blockData[bufferIndex++]); // Followed by the byte itself, and increment the buffer index
-
   clearBSY(); // And raise BSY to tell the host that we're ready
-
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the data-sending loop until the host lowers CMD or the drive is reset
-    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
-    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next byte of the block
-      sendParity(blockData[bufferIndex]); // Send the parity for the byte
-      REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
-      REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // Then write the inverse of the byte into W1TC to clear all the bits that need to be cleared, and increment the buffer index
-    }
-    prevState = currentState; // Update the previous state of STRB
-  }
+  sendMultiData(); // Now send the rest of the block data, with the appropriate parity bits for each byte
 }
 
 // Process and execute a write command
@@ -607,14 +622,7 @@ void writeDrive(){
   bufferIndex = 0; // Reset the blockData buffer index
   clearBSY(); // Raise BSY to tell the host that we're ready to receive the data
  
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the data-receiving loop until the host lowers CMD or the drive is reset
-    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
-    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, it means the data is valid
-      blockData[bufferIndex] = REG_READ(GPIO_IN_REG) >> busOffset; // So read the data from the bus into the blockData buffer
-      sendParity(blockData[bufferIndex++]); // And send the appropriate parity for this byte, followed by incrementing the buffer index
-    }
-    prevState = currentState; // Update the previous state of STRB
-  }
+  receiveMultiData(); // And receive the block data from the host
 
   setParallelDir(1); // Set the bus to output mode
   //delayMicroseconds(1);
@@ -938,15 +946,8 @@ void writeDrive(){
 
   clearBSY(); // Raise BSY to tell the host that we're ready to continue
 
-  while(bitRead(REG_READ(GPIO_IN_REG), CMDPin) == 1 && bitRead(REG_READ(GPIO_IN_REG), PRESPin) == 1){ // Stay in the byte-sending loop until the host lowers CMD or the drive is reset
-    currentState = bitRead(REG_READ(GPIO_IN_REG), STRBPin); // Read the current state of STRB
-    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next status byte
-      sendParity(blockData[bufferIndex]); // Set the parity data for the status byte
-      REG_WRITE(GPIO_OUT_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
-      REG_WRITE(GPIO_OUT_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // And write the inverse of the byte into W1TC to clear all the bits that need to be cleared, incrementing the buffer index afterwards
-    }
-    prevState = currentState; // Update the previous state of STRB
-  }
+  sendMultiData(); // Now send the rest of the status bytes, with the appropriate parity for each byte
+
   if(halt == true){ // If we set the halt flag earlier, then we need to halt the ESProFile here
     while(1);
   }
@@ -982,18 +983,18 @@ void printCommand() {
 
 // Set all pins to the correct initial direction and state
 void initPinsEmulator(){
-  for(int i = busOffset; i < busOffset + 8; i++){ // Make the bus an input
+  for(int i = dataBusStart; i < dataBusStart + 8; i++){ // Make the bus an input
     pinMode(i, INPUT);
   }
   // And make everything else inputs too, except BSY, PARITY, and the LEDs
-  pinMode(CMDPin, INPUT);
-  pinMode(BSYPin, OUTPUT);
-  pinMode(RWPin, INPUT);
-  pinMode(STRBPin, INPUT);
-  pinMode(PRESPin, INPUT);
-  pinMode(PARITYPin, OUTPUT);
-  pinMode(red, OUTPUT);
-  pinMode(green, OUTPUT);
+  pinMode(CMD_Pin, INPUT);
+  pinMode(BSY_Pin, OUTPUT);
+  pinMode(RW_Pin, INPUT);
+  pinMode(STRB_Pin, INPUT);
+  pinMode(PRES_Pin, INPUT);
+  pinMode(PARITY_Pin, OUTPUT);
+  pinMode(red_led, OUTPUT);
+  pinMode(green_led, OUTPUT);
   // Set both BSY and PARITY to their default states (high)
   clearBSY();
   clearPARITY();
@@ -1066,37 +1067,33 @@ void updateSpareTable(){
 // Remember, all signals are active low
 inline __attribute__((__always_inline__)) void setBSY(){
   setLEDColor(0, 0); // Setting BSY is special because it also turns off the LEDs
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << BSYPin); // In addition to setting BSY low
+  REG_WRITE(BSY_W1TC_REG, 0b1 << BSYPin); // In addition to setting BSY low
 }
 
 inline __attribute__((__always_inline__)) void clearBSY(){
   setLEDColor(0, 1); // Same for clearing BSY; we have to turn the green LED on
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << BSYPin); // As well as setting BSY high
+  REG_WRITE(BSY_W1TS_REG, 0b1 << BSYPin); // As well as setting BSY high
 }
 
 // The other set/clear functions don't bother with the LEDs
 // The parity functions are inline because they're called in a part of the code where speed is critical
 inline __attribute__((__always_inline__)) void setPARITY(){
-  REG_WRITE(GPIO_OUT_W1TC_REG, 0b1 << PARITYPin);
+  REG_WRITE(PARITY_W1TC_REG, 0b1 << PARITYPin);
 }
 
 inline __attribute__((__always_inline__)) void clearPARITY(){
-  REG_WRITE(GPIO_OUT_W1TS_REG, 0b1 << PARITYPin);
+  REG_WRITE(PARITY_W1TS_REG, 0b1 << PARITYPin);
 }
 
 // The read functions just return the state of their corresponding control signals
 inline __attribute__((__always_inline__)) bool readCMD(){
-  return bitRead(REG_READ(GPIO_IN_REG), CMDPin);
+  return bitRead(REG_READ(CMD_IN_REG), CMDPin);
 }
 
 inline __attribute__((__always_inline__)) bool readRW(){
-  return bitRead(REG_READ(GPIO_IN_REG), RWPin);
+  return bitRead(REG_READ(RW_IN_REG), RWPin);
 }
 
 inline __attribute__((__always_inline__)) bool readSTRB(){
-  return bitRead(REG_READ(GPIO_IN_REG), STRBPin);
-}
-
-inline __attribute__((__always_inline__)) bool readPRES(){
-  return bitRead(REG_READ(GPIO_IN_REG), PRESPin);
+  return bitRead(REG_READ(STRB_IN_REG), STRBPin);
 }

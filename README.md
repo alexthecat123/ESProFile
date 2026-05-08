@@ -45,7 +45,9 @@ With all that out of the way, let's talk about how to actually build an ESProFil
 ## Hardware
 
 ### Variants
-There are two different versions of the ESProFile hardware, and each of these has two subvariants. Note that the pictures of the boards shown below were taken of development versions of the PCBs, and the final boards that you'll be fabricating might have a couple visual changes and quality of life improvements.
+There are three different versions of the ESProFile hardware. Note that the pictures of the boards shown below were taken of development versions of the PCBs, and the final boards that you'll be fabricating might have a couple visual changes and quality of life improvements.
+
+- Onboard LisaFPGA ESProFile: For ease of use, there's an ESProFile built right into the LisaFPGA board, so you can be up and running on your FPGA-based Lisa without even connecting an external disk or emulator! This one only has an emulator mode (no diag mode), but it supports all the same emulation features as the regular ESProFiles. See the LisaFPGA project repo for more details on how to program and use the onboard ESProFile; the unified programming script handles it all for you!
 
 - External PCB: This board is designed for use outside your Lisa, like how a ProFile is used. Given its small size and its form factor, this is also the best choice when using the board in diagnostic mode. Since it doesn't receive any power from the Lisa, the external ESProFile must be powered via USB whenever it's being used.
 
@@ -577,3 +579,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 10/5/2025 - Added a guide to the SDTemplate directory written by @bmwcyclist on LisaList2 explaining how to create blank ESProFile disk images.
 
 11/14/2025 - Fixed a bug where ESProFile would take too long to respond to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs.
+
+4/19/2026 - Switched to using a header file for pin definitions instead of defining them in the source files themselves. This way, it's easy for people to make custom boards with different pin assignments. And it also means that I was able to add support (in the form of a header file) for the onboard LisaFPGA version of ESProFile in this release! Also cached the emulator read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
