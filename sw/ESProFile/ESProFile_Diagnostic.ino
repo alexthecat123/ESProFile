@@ -1,16 +1,19 @@
 //***********************************************************************************
-//* ESProFile ProFile Diagnostic Software v1.1                                      *
+//* ESProFile ProFile Diagnostic Software v1.2                                      *
 //* By: Alex Anderson-McLeod                                                        *
 //* Email address: alexelectronicsguy@gmail.com                                     *
 //***********************************************************************************
 
 // 12/9/2025 - v1.1 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile.
-
+// 5/16/2026 - v1.2 - Fixed error handling bugs and added retry logic for backup and restore operations. Now these operations won't fail/hang on a read/write error and will retry failed reads/writes several times before giving up and skipping that block.
 
 /* Desirable Features
 Allow the tester to also back an image up to the SD card; you get to type a fileame, it checks if it exists, and then goes to work. It also prints a directory for you before prompting you to give a name
 For restoring, it gives you a numbered file list, and you just select the desired number to restore, then it checks that it's the right size and warns you (but still lets you proceed) if not
 */
+
+#define DIAG_VERSION "1.2" // The version of the diag firmware; this is printed in all the menus and isn't used for anything else
+#define MAX_RETRIES 5 // The max number of times to retry a read/write before giving up and moving on; used for backup/restore
 
 byte packetNum = 0x01;
 bool testMenu = false;
@@ -45,7 +48,9 @@ long int start;
 //byte dataStripped[1024];
 int done = 0;
 //File xModemData;
-uint16_t highestBlock = 0;
+uint32_t highestBlock = 0;
+
+uint32_t currentAccessAttempts = 0; // Keeps track of how many times we've attempted to access the current two blocks during backups/restores
 
 
 byte driveStatus[5];
@@ -104,6 +109,7 @@ void diagSetup(){
   Serial.setTimeout(10);
   initPinsDiag();
   setParallelDir(0);
+  resetDrive();
   mainMenu();
 }
 
@@ -542,7 +548,7 @@ bool widgetServoMenu = false;
 void mainMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -573,7 +579,7 @@ void mainMenu(){
 void testSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -596,7 +602,7 @@ void testSubMenu(){
 void Z8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -625,7 +631,7 @@ void Z8SubMenu(){
 void tenMegZ8SubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -658,7 +664,7 @@ void tenMegZ8SubMenu(){
 void widgetSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -698,7 +704,7 @@ void widgetSubMenu(){
 void servoSubMenu(){
   clearScreen();
   setLEDColor(0, 1);
-  Serial.println("ESProFile Diagnostic Mode - Version 1.1");
+  Serial.printf("ESProFile Diagnostic Mode - Version %s\n", DIAG_VERSION);
   Serial.println("By: Alex Anderson-McLeod");
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   Serial.println();
@@ -1299,7 +1305,7 @@ void diagLoop() {
         clearScreen();
         setLEDColor(0, 1);
         confirm();
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         bool abort = false;
         flushInput();
         if(confirmOperation == true){
@@ -1367,7 +1373,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         confirm();
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         if(confirmOperation == true){
           getDriveType();
           Serial.println();
@@ -1444,7 +1450,7 @@ void diagLoop() {
         getDriveType();
         setLEDColor(0, 1);
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         Serial.println();
         highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
         flushInput();
@@ -1539,7 +1545,7 @@ void diagLoop() {
         getDriveType();
         setLEDColor(0, 1);
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         Serial.println();
         highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
         flushInput();
@@ -1926,6 +1932,7 @@ void diagLoop() {
       else if(command.equalsIgnoreCase("C") and testMenu == false and diagMenu == false and diagMenuTenMeg == false and widgetMenu == false and widgetServoMenu == false){
         clearScreen();
         backupErrors = 0;
+        currentAccessAttempts = 0; // Zero out the number of access attempts so we can count retries during the ProFile reads
         getDriveType();
         setLEDColor(0, 1);
         Serial.println();
@@ -1937,9 +1944,6 @@ void diagLoop() {
         currentIndex = 0;
         currentBlock = 0;
         totalBlocks = (driveSize[0]<<16 | driveSize[1]<<8 | driveSize[2]);
-        driveSize[0] = currentBlock >> 16;
-        driveSize[1] = currentBlock >> 8;
-        driveSize[2] = currentBlock;
         byte successPacket;
         bool failure = false;
         if(startTransmission() == false){
@@ -1949,10 +1953,7 @@ void diagLoop() {
           startNewPacket();
           for(int i = 0; i < 1024; i++){
             if(currentIndex % 1064 == 0 and currentBlock != totalBlocks + 2){
-              driveSize[0] = currentBlock >> 16;
-              driveSize[1] = currentBlock >> 8;
-              driveSize[2] = currentBlock;
-              readTwoBlocks(driveSize[0], driveSize[1], driveSize[2]);
+              readTwoBlocks(currentBlock >> 16, currentBlock >> 8, currentBlock);
               currentBlock += 2;
             }
             if(currentIndex % 1064 == 0 and currentBlock == totalBlocks + 2){
@@ -2015,7 +2016,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         clearScreen();
         confirm();
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         backupErrors = 0;
         failed = false;
         packetNum = 0x01;
@@ -2029,6 +2030,7 @@ void diagLoop() {
         done = 0;
         ackStatus = 0x02;
         failed = false;
+        currentAccessAttempts = 0; // Zero out the number of access attempts so we can count retries during the ProFile writes
         if(confirmOperation == true){
           getDriveType();
 
@@ -2051,11 +2053,11 @@ void diagLoop() {
             if(done == 1){
               break;
             }
-            driveSize[0] = currentBlock >> 16;
-            driveSize[1] = currentBlock >> 8;
-            driveSize[2] = currentBlock;
             //Serial.println("Thanks for the packet!");
-            writeTwoBlocks(driveSize[0], driveSize[1], driveSize[2]);
+            if (currentBlock < highestBlock){
+              //SerialBT.printf("%06X\n", currentBlock); // Delete this once testing is done
+              writeTwoBlocks(currentBlock >> 16, currentBlock >> 8, currentBlock);
+            }
             currentBlock += 2;
           }
           Serial.println();
@@ -2691,7 +2693,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         repeatTest();
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         bool firstTime = true;
         long int passes = 1;
         Serial.println();
@@ -2771,7 +2773,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         confirm();
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         if(confirmOperation == true){
           getDriveType();
           repeatTest();
@@ -2979,7 +2981,7 @@ void diagLoop() {
         setLEDColor(0, 1);
         bool abort = false;
         confirm();
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         if(confirmOperation == true){
           getDriveType();
           repeatTest();
@@ -3092,11 +3094,11 @@ void diagLoop() {
         setLEDColor(0, 1);
         bool abort = false;
         repeatTest();
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         bool firstTime = true;
         randomSeed(analogRead(0));
         long int passes = 1;
-        uint16_t randomBlock = 0;
+        uint32_t randomBlock = 0;
         Serial.println();
         highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
         flushInput();
@@ -3178,14 +3180,14 @@ void diagLoop() {
         setLEDColor(0, 1);
         confirm();
         bool abort = false;
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         if(confirmOperation == true){
           getDriveType();
           repeatTest();
           bool firstTime = true;
           randomSeed(analogRead(0));
           long int passes = 1;
-          uint16_t randomBlock = 0;
+          uint32_t randomBlock = 0;
           Serial.println();
           highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
           flushInput();
@@ -3295,10 +3297,10 @@ void diagLoop() {
         setLEDColor(0, 1);
         bool abort = false;
         repeatTest();
-        uint16_t highestBlock = 0;
+        uint32_t highestBlock = 0;
         bool firstTime = true;
         long int passes = 1;
-        uint16_t butterflyBlock;
+        uint32_t butterflyBlock;
         Serial.println();
         highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
         flushInput();
@@ -3384,10 +3386,10 @@ void diagLoop() {
           getDriveType();
           setLEDColor(0, 1);
           repeatTest();
-          uint16_t highestBlock = 0;
+          uint32_t highestBlock = 0;
           bool firstTime = true;
           long int passes = 1;
-          uint16_t butterflyBlock;
+          uint32_t butterflyBlock;
           Serial.println();
           highestBlock = (driveSize[0]<<16) | (driveSize[1]<<8) | (driveSize[2]);
           flushInput();
@@ -10790,26 +10792,38 @@ void repeatTest(){
 }
 
 void writeTwoBlocks(byte address0, byte address1, byte address2){
-  int startBackupErrors = backupErrors;
+  currentAccessAttempts++; // At the start of the write, increment the number of restore attempts for these blocks
+  if (currentAccessAttempts > MAX_RETRIES){ // If we've attempted to restore these blocks more than the max number of retries, skip them
+    currentAccessAttempts = 0; // Reset the restore attempts for the next blocks
+    backupErrors++; // Increment the number of backup errors
+    return; // Return to the caller
+  }
   setLEDColor(0, 0);
   uint32_t fullAddress = address0 << 16 | address1 << 8 | address2;
   uint32_t totalBlocks = (driveSize[0]<<16 | driveSize[1]<<8 | driveSize[2]);
   bool handshakeSuccessful = profileHandshake();
   byte commandResponse = sendCommandBytes(writeCommand, address0, address1, address2, defaultRetries, defaultSpareThreshold);
-  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0 or handshakeSuccessful == 0 or commandResponse != 0x03){
+  if(handshakeSuccessful == 0 or commandResponse != 0x03){
     if(fullAddress < totalBlocks){
-      backupErrors += 1;
+      // If the handshake indicates an error, then try the write again
+      initPinsDiag();
+      //SerialBT.println("Handshake failed or bad response for first block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
-  fullAddress += 1;
   setRW();
   //delay(1);
   clearCMD();
   //delay(1);
+  long int timeoutStart = millis();
   while(readBsy() != 1){
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      break;
+      // If the timeout expires, then try the write again
+      initPinsDiag();
+      //SerialBT.println("Timeout expired while first busy lowering for first block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
   //delay(1);
@@ -10831,10 +10845,14 @@ void writeTwoBlocks(byte address0, byte address1, byte address2){
   delayMicroseconds(readDelay);
   setParallelDir(0);
   delayMicroseconds(1);
+  timeoutStart = millis();
   while(readBsy() != 0 or receiveData() != 0x06){
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      break;
+      // If the timeout expires, then try the write again
+      initPinsDiag();
+      //SerialBT.println("Timeout expired while waiting for drive to lower busy after sending first block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
   setSTRB();
@@ -10849,32 +10867,56 @@ void writeTwoBlocks(byte address0, byte address1, byte address2){
   //delay(1);
   clearCMD();
   readStatusBytes();
+  if ((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011100) != 0 or (driveStatus[2] & B01000000) != 0 or driveStatus[4] != 0xFF) {
+    if(fullAddress < totalBlocks){
+      // If the drive status indicates an error, then try the write again
+      initPinsDiag();
+      //SerialBT.println("Drive status indicates an error after reading status for first block");
+      //SerialBT.printf("Drive status: %02X %02X %02X %02X %02X\n", driveStatus[0], driveStatus[1], driveStatus[2], driveStatus[3], driveStatus[4]);
+      writeTwoBlocks(address0, address1, address2);
+      return;
+    }
+  }
+  fullAddress += 1;
   handshakeSuccessful = profileHandshake();
   address0 = fullAddress >> 16;
   address1 = fullAddress >> 8;
   address2 = fullAddress;
   commandResponse = sendCommandBytes(writeCommand, address0, address1, address2, defaultRetries, defaultSpareThreshold);
-  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0 or handshakeSuccessful == 0 or commandResponse != 0x03){
+  if(handshakeSuccessful == 0 or commandResponse != 0x03){
     if(fullAddress < totalBlocks){
-      backupErrors += 1;
+      // If the handshake indicate an error, then try the write again
+      // Decrement the address to go back to the first block
+      fullAddress -= 1;
+      address0 = fullAddress >> 16;
+      address1 = fullAddress >> 8;
+      address2 = fullAddress;
+      initPinsDiag();
+      //SerialBT.println("Handshake failed or bad response for second block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
   setRW();
   //delay(1);
   clearCMD();
   //delay(1);
+  timeoutStart = millis();
   while(readBsy() != 1){
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      break;
-    }
-    if(startBackupErrors != backupErrors and fullAddress < totalBlocks){
-      setLEDColor(1, 0);
-    }
-    else{
-      setLEDColor(0, 1);
+      // If the timeout expires, then try the write again
+      // Decrement the address to go back to the first block
+      fullAddress -= 1;
+      address0 = fullAddress >> 16;
+      address1 = fullAddress >> 8;
+      address2 = fullAddress;
+      initPinsDiag();
+      //SerialBT.println("Timeout expired while first busy lowering for second block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
+  setLEDColor(0, 1);
   //delay(1);
   setParallelDir(1);
   delayMicroseconds(1);
@@ -10894,10 +10936,19 @@ void writeTwoBlocks(byte address0, byte address1, byte address2){
   delayMicroseconds(readDelay);
   setParallelDir(0);
   delayMicroseconds(1);
+  timeoutStart = millis();
   while(readBsy() != 0 or receiveData() != 0x06){
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
-      break;
+      // If the timeout expires, then try the write again
+      // Decrement the address to go back to the first block
+      fullAddress -= 1;
+      address0 = fullAddress >> 16;
+      address1 = fullAddress >> 8;
+      address2 = fullAddress;
+      initPinsDiag();
+      //SerialBT.println("Timeout expired while waiting for drive to lower busy after sending second block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
     }
   }
   setSTRB();
@@ -10912,19 +10963,66 @@ void writeTwoBlocks(byte address0, byte address1, byte address2){
   //delay(1);
   clearCMD();
   readStatusBytes();
+  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011100) != 0 or (driveStatus[2] & B01000000) != 0 or driveStatus[4] != 0xFF){
+    if(fullAddress < totalBlocks){
+      // If the drive status indicates an error, then try the write again
+      // Decrement the address to go back to the first block
+      fullAddress -= 1;
+      address0 = fullAddress >> 16;
+      address1 = fullAddress >> 8;
+      address2 = fullAddress;
+      initPinsDiag();
+      //SerialBT.println("Drive status indicates an error after reading status for second block");
+      writeTwoBlocks(address0, address1, address2);
+      return;
+    }
+  }
+  currentAccessAttempts = 0; // If we made it here, the write was successful, so reset the restore attempts for the next blocks
 }
 
 void readTwoBlocks(byte address0, byte address1, byte address2){
-  int startBackupErrors = backupErrors;
+  currentAccessAttempts += 1; // At the start of the read, increment the number of backup attempts for these blocks
+  if (currentAccessAttempts > MAX_RETRIES){ // If we've attempted to backup these blocks more than the max number of retries, skip them
+    currentAccessAttempts = 0; // Reset the backup attempts for the next blocks
+    backupErrors++; // Increment the number of backup errors
+    // Fill the block data buffer with "BAD BLOCK" over and over to indicate that these blocks were skipped
+    for(int i = 0; i < 1064; i++){
+      blockDataBuffer[i] = ' ';
+    }
+    for(int i = 0; i < 1064; i += 9){
+      if (i + 8 >= 1064){
+        break;
+      }
+      blockDataBuffer[i] = 'B';
+      blockDataBuffer[i + 1] = 'A';
+      blockDataBuffer[i + 2] = 'D';
+      blockDataBuffer[i + 3] = ' ';
+      blockDataBuffer[i + 4] = 'B';
+      blockDataBuffer[i + 5] = 'L';
+      blockDataBuffer[i + 6] = 'O';
+      blockDataBuffer[i + 7] = 'C';
+      blockDataBuffer[i + 8] = 'K';
+    }
+    return; // Return to the caller
+  }
   uint32_t fullAddress = address0 << 16 | address1 << 8 | address2;
   uint32_t totalBlocks = (driveSize[0]<<16 | driveSize[1]<<8 | driveSize[2]);
   setLEDColor(0, 0);
   bool handshakeSuccessful = profileHandshake();
   byte commandResponse = sendCommandBytes(readCommand, address0, address1, address2, defaultRetries, defaultSpareThreshold);
   readStatusBytes();
-  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0 or handshakeSuccessful == 0 or commandResponse != 0x02){
+  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011100) != 0 or (driveStatus[2] & B01000000) != 0 or driveStatus[4] != 0xFF or handshakeSuccessful == 0 or commandResponse != 0x02){
     if(fullAddress < totalBlocks){
-      backupErrors += 1;
+      // If the drive status or handshake indicate an error, then try the read again
+      initPinsDiag();
+      readTwoBlocks(address0, address1, address2);
+      return;
+    } else {
+      // If we've reached the end of the drive, fill the block data buffer with 0s
+      for(int i = 0; i < 1064; i++){
+        blockDataBuffer[i] = 0x00;
+      }
+      return; // And return
     }
   }
   setParallelDir(0);
@@ -10944,9 +11042,18 @@ void readTwoBlocks(byte address0, byte address1, byte address2){
   fullAddress += 1;
   commandResponse = sendCommandBytes(readCommand, fullAddress >> 16, fullAddress >> 8, fullAddress, defaultRetries, defaultSpareThreshold);
   readStatusBytes();
-  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011110) != 0 or (driveStatus[2] & B01000000) != 0 or handshakeSuccessful == 0 or commandResponse != 0x02){
+  if((driveStatus[0] & B11111101) != 0 or (driveStatus[1] & B11011100) != 0 or (driveStatus[2] & B01000000) != 0 or driveStatus[4] != 0xFF or handshakeSuccessful == 0 or commandResponse != 0x02){
     if(fullAddress < totalBlocks){
-      backupErrors += 1;
+      // If the drive status or handshake indicate an error, then try the read again
+      initPinsDiag();
+      readTwoBlocks(address0, address1, address2); // Decrement the address to go back to the first block
+      return;
+    } else {
+      // If we've reached the end of the drive, fill the rest of the block data buffer with 0s
+      for(int i = 532; i < 1064; i++){
+        blockDataBuffer[i] = 0x00;
+      }
+      return; // And return
     }
   }
   setParallelDir(0);
@@ -10962,12 +11069,8 @@ void readTwoBlocks(byte address0, byte address1, byte address2){
   }
   clearCMD();
   delayMicroseconds(readDelay);
-  if(startBackupErrors != backupErrors and fullAddress < totalBlocks){
-    setLEDColor(1, 0);
-  }
-  else{
-    setLEDColor(0, 1);
-  }
+  setLEDColor(0, 1);
+  currentAccessAttempts = 0; // If we made it here, the read was successful, so reset the access attempts for the next blocks
 }
 
 
@@ -11071,9 +11174,9 @@ static void hex2bin(uint8_t *out, const char *in, size_t *dataSize)
 
 void resetDrive(){
   setPRES();
-  delay(10);
+  delay(100);
   clearPRES();
-  delay(10);
+  delay(100);
 }
 
 void printRawData(){
@@ -11197,9 +11300,9 @@ void initPinsDiag(){
   clearPRES();
   delay(10);
   setPRES();
-  delay(10);
+  delay(100);
   clearPRES();
-  delay(10);
+  delay(100);
 }
 
 
@@ -11288,6 +11391,8 @@ bool profileHandshake(){ //Returns true if the handshake succeeds, false if it f
   while(receiveData() != 0b00000001 or readBsy() != 0){
     if(millis() - timeoutStart >= 5000){
       //Serial.println("Handshake Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with a $01, halt the program
+      initPinsDiag();
+      //SerialBT.println("proFileHandshake() failed!!!");
       success = 0;
       break;
     }
@@ -11315,10 +11420,16 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
   commandBufferStandard[3] = byte3;
   commandBufferStandard[4] = byte4;
   commandBufferStandard[5] = byte5;
+  long int timeoutStart = millis();
   while(readBsy() != 1){
-
+    if(millis() - timeoutStart >= 5000){
+      //Serial.println("Drive never lowered BSY after receiving command!");
+      initPinsDiag();
+      //SerialBT.println("sendCommandBytes(): Drive hasn't raised BSY yet!!!");
+      return 0xFF;
+    }
   }
-  byte success;
+  byte success = 0x00;
   setParallelDir(1);
   delayMicroseconds(1);
   //setSTRB(); //For some reason, STRB seems to be active high during the command byte phase of the transfer, so set it low to start this phase MEOW
@@ -11373,7 +11484,7 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
   //what would increasing the baud rate do?
   //make sure that things still work with ProFiles and Widgets too!
   
-  long int timeoutStart = millis();
+  timeoutStart = millis();
   setParallelDir(0);
   delayMicroseconds(1);
   while(1){
@@ -11387,7 +11498,9 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
     }
     if(millis() - timeoutStart >= 5000){
       //Serial.println("Command Confirmation Failed!!!"); //If more than 5 seconds pass and the drive hasn't responded with an $02, halt the program
+      //SerialBT.println("Drive never acknowledged command!");
       success = 0xFF;
+      initPinsDiag();
       break;
     }
   }
@@ -11396,7 +11509,9 @@ byte sendCommandBytes(byte byte0, byte byte1, byte byte2, byte byte3, byte byte4
   //setSTRB(); //Acknowledge that we read the $02 confirmation by pulsing the strobe MEOW
   setParallelDir(0);
   delayMicroseconds(1);
-  success = receiveData();
+  if (success != 0xFF) {
+    success = receiveData();
+  }
   //delay(1);
   //clearSTRB();
   setRW(); //Tell the drive that we're writing to the bus and respond to its $02 with a $55
@@ -11415,6 +11530,7 @@ void readStatusBytes(){ //Returns the byte array containing the status bytes wit
   while(readBsy() != 1){ //Wait until the drive finishes reading the block and time out if it doesn't finish within 10 seconds
     if(millis() - timeoutStart >= 10000){
       driveStatus[4] = 0x00;
+      initPinsDiag();
       break;
     }
   }
@@ -11454,8 +11570,8 @@ void writeData(uint16_t writeBytes){
   //delay(1);
   clearCMD();
   //delay(1);
+  long int timeoutStart = millis();
   while(readBsy() != 1){
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
       Serial.println("Drive Never Said It Was Ready To Receive Data!!!");
       break;
@@ -11480,11 +11596,11 @@ void writeData(uint16_t writeBytes){
   delayMicroseconds(readDelay);
   setParallelDir(0);
   delayMicroseconds(1);
+  timeoutStart = millis();
   while(readBsy() != 0 or (receiveData() != 0x06 and commandResponseMatters)){
     if(commandResponseMatters == false){
       delay(1);
     }
-    long int timeoutStart = millis();
     if(millis() - timeoutStart >= 10000){
       Serial.println("Drive never responded after write operation!");
       break;

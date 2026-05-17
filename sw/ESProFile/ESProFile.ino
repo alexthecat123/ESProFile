@@ -13,10 +13,11 @@
 #include "SdFat.h"
 #include "sdios.h"
 #include "EEPROM.h"
+
 // Include this pin definition file if you've got a standard ESProFile board
-//#include "PinDefs_ESProFile.h"
+#include "PinDefs_ESProFile.h"
 // But include this one instead if you're using the ESProFile that's built into the LisaFPGA board
-#include "PinDefs_LisaFPGA.h"
+//#include "PinDefs_LisaFPGA.h"
 
 // The entire purpose of this file is to pick whether we want to run ESProFile_Diagnostic.ino or ESProFile_Emulator.ino
 void setup(){

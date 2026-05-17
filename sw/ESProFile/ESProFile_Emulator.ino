@@ -5,10 +5,13 @@
 //***********************************************************************************
 
 // ******** Changelog ********
-// 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card
-// 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions
+// 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card.
+// 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions.
 // 11/14/2025 - v1.3 - Fixed a bug where ESProFile wouldn't respond in time to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs, as well as a bug where a botched LOS 1.0 shutdown under the Rev. C ROMs would lead to an Error 85 on the next boot attempt.
 // 4/19/2026 - v1.4 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile. Also cached the ProFile read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
+// 5/17/2026 - v1.5 - Added partial Apple /// compatibility; reads work, but writes don't.
+
+#define EMULATOR_VERSION "1.5" // The version of the ESProFile emulator software; this gets printed over serial at startup
 
 #define readStatusOffset 4 // Status bytes are bytes 0-3 of blockData during a read
 #define writeStatusOffset 532 // And bytes 532-535 during a write
@@ -72,7 +75,7 @@ void emulatorSetup(){
   EEPROM.commit();
   initPinsEmulator(); // Set all the ESProFile's pins to the correct direction and state
   setLEDColor(1, 0); // Make the LED red since the ESProFile hasn't initialized yet
-  Serial.println("ESProFile Emulator Mode - Version 1.4"); // Print a welcome message
+  Serial.printf("ESProFile Emulator Mode - Version %s\n", EMULATOR_VERSION); // Print a welcome message
   Serial.println("If you find any bugs, please email me at alexelectronicsguy@gmail.com!");
   if(!SDCard.begin(SD_CONFIG)){ // Initialize the SD card with our hardware SPI instance
     Serial.println("SD card initialization failed! Halting..."); // And print an error/go into an infinite loop on failure
@@ -97,6 +100,7 @@ void emulatorLoop() {
   setParallelDir(1); // Set the ProFile bus to output mode
   //delayMicroseconds(1);
   sendData(0x01); // Send an 0x01 to the host
+  sendParity(0x01); // And the appropriate parity bit for that value
   setBSY(); // And lower BSY to acknowledge our presence
   currentTime = 0;
   while(readCMD() == 0){ // Wait for the host to raise CMD in response, and timeout if it doesn't do this in time
@@ -142,6 +146,7 @@ void emulatorLoop() {
     setParallelDir(1); // Set the bus to output mode
     //delayMicroseconds(1);
     sendData(0x55); // Put an invalid value on the bus to show that we didn't understand the command
+    sendParity(0x55); // And the appropriate parity bit for that value
     setBSY(); // And tell the host that it's there
   }
 }
@@ -153,7 +158,7 @@ void emulatorLoop() {
 IRAM_ATTR void sendMultiData() {
   while(bitRead(REG_READ(CMD_IN_REG), CMDPin) == 1 && bitRead(REG_READ(PRES_IN_REG), PRESPin) == 1){ // Stay in the data-sending loop until the host lowers CMD or the drive is reset
     currentState = bitRead(REG_READ(STRB_IN_REG), STRBPin); // Read the current state of STRB
-    if(currentState == 0 and prevState == 1){ // If we see a falling edge on STRB, send the next byte
+    if(currentState == 1 and prevState == 0){ // If we see a rising edge on STRB, send the next byte
       sendParity(blockData[bufferIndex]); // Send the parity for the byte
       REG_WRITE(BUS_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
       REG_WRITE(BUS_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // Then write the inverse of the byte into W1TC to clear all the bits that need to be cleared, and increment the buffer index
@@ -191,6 +196,7 @@ void readDrive(){
   setParallelDir(1); // Set the bus to output mode
   //delayMicroseconds(1);
   sendData(0x02); // Acknowledge the read command with an 0x02 (command value + 2)
+  sendParity(0x02); // And the appropriate parity bit for that value
   setBSY(); // And lower BSY to tell the host about our acknowledgement
   printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
   currentTime = 0;
@@ -598,6 +604,7 @@ void writeDrive(){
   setParallelDir(1); // Set the bus to output mode
   //delayMicroseconds(1);
   sendData(commandBuffer[0] + 0x02); // Acknowledge the write command by sending the command value + 2
+  sendParity(commandBuffer[0] + 0x02); // And the appropriate parity for that value
   setBSY(); // And lower BSY to tell the host that we've acknowledged the command
   printCommand(); // Now that we're in control of the pace of the bus, print the command that we're executing
   currentTime = 0;
@@ -627,6 +634,7 @@ void writeDrive(){
   setParallelDir(1); // Set the bus to output mode
   //delayMicroseconds(1);
   sendData(0x06); // Acknowledge the successful reception of the data block by sending an 0x06
+  sendParity(0x06); // And the appropriate parity for that value
   setBSY(); // And lower BSY to tell the host about our acknowledgement
   currentTime = 0;
   while(readCMD() == 0){ // Wait for the host to raise CMD and timeout if it doesn't
@@ -956,12 +964,23 @@ void writeDrive(){
 // Prints whatever command the drive is currently executing
 void printCommand() {
   // Old/simple way of printing raw commands for debugging
-  /*for(int i = 0; i < 6; i++){
+  // I've decided to actually revert to this though because it's cleaner and provides more info
+  for(int i = 0; i < 6; i++){
     printDataNoSpace(commandBuffer[i]);
-  }*/
+  }
+  // If the command is unknown, print a warning
+  if(commandBuffer[0] > 0x03){
+    // Ignore 0xFF even though it is an invalid command; the Apple /// sends this as a dummy command pretty frequently
+    if(commandBuffer[0] != 0xFF){
+      Serial.println(" - Unknown command!");
+    }
+    else {
+      Serial.println();
+    }
+  }
 
   // New way to print the command in a more human-readable format
-  if(commandBuffer[0] == 0x00){ // Read command
+  /*if(commandBuffer[0] == 0x00){ // Read command
     Serial.print("Read  Block: ");
   }
   else if(commandBuffer[0] == 0x01 or commandBuffer[0] == 0x02 or commandBuffer[0] == 0x03){ // Write command
@@ -972,7 +991,7 @@ void printCommand() {
   }
   printDataNoSpace(commandBuffer[1]); // Now print the block number
   printDataNoSpace(commandBuffer[2]);
-  printDataNoSpace(commandBuffer[3]);
+  printDataNoSpace(commandBuffer[3]);*/
 
   // We used to print the retry count and spare threshold, but it's kind of unnecessary for an emulator and wastes transmission time
   /*Serial.print("        Retry Count: "); // The retry count
