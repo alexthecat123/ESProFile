@@ -1227,11 +1227,7 @@ void writeDrive(){
     }
   }
   // If we end up here, then the command is just a good old-fashioned write
-  #if 1
   else if((blockNum*PROFILE_BLOCK_SIZE) < disk.fileSize()){ // Check that the block number is within the range of the disk image
-  #else
-  else if(blockNum < disk.fileSize()){ // Check that the block number is within the range of the disk image
-  #endif
     blockNum *= PROFILE_BLOCK_SIZE;
     
     disk.seekSet(blockNum); // Seek to the block location in the disk image by byte location.
