@@ -6,17 +6,15 @@
 #define APPLE_III_ONLY 1
 #define USE_LEDS 1 // If I turn these off time of directory list is 16.5 seconds, on it is 8.5 seconds. Using the LEDs make it faster.
 // ******** Changelog ********
-// 2/12/2025 - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card.
-// 2/22/2025 - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions.
+// 2/12/2025  - v1.1 - Fixed an issue where printing debug information over serial would sometimes cause read errors when using ESProFile under LOS 3.0 with a 2-port parallel card.
+// 2/22/2025  - v1.2 - Improved performance by about 30% (including during Selector copy operations) by making some tweaks to the SPI initialization routines, copy buffer size, and inlining some functions.
 // 11/14/2025 - v1.3 - Fixed a bug where ESProFile wouldn't respond in time to satisfy the super-short timeout period of Rev. C and earlier Lisa boot ROMs, as well as a bug where a botched LOS 1.0 shutdown under the Rev. C ROMs would lead to an Error 85 on the next boot attempt.
-// 4/19/2026 - v1.4 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile. Also cached the ProFile read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
-// 8/21/2026 - v1.5 - Improved SD card access speeds by a factor of about 5 on average with the DUSE_SPI_ARRAY_TRANSFER build option.
-// 9/29/2026 - v1.6 - Works now on the "Apple ///" and with the "Titan /// Plus IIe" and "SoftCard ///" if you build with APPLE_III_ONLY set to 1.
-//                    Tested with the three types of .profile drivers I could find. .prof[#], .profile, and .cpm[#] on the Apple ///. (* Gary Desrochers *)
-
-// TODO: Add the four bytes at the beginning in it's own method. Is this needed, no but including the bytes with the read data seems wrong somehow. Doing
-//       so would also clean up the multitude of READ_STATUS_OFFSET used all over. I know, the compiler takes care of those but why make the coding harder.
-// TODO: Need to go through timings more.  Some things should be taking longer to be closer cycle correct and other things are taking too long.
+// 4/19/2026  - v1.4 - Added support for pin definition header files to allow easy customization of ESProFile for different board layouts, and used this to create the LisaFPGA variant of ESProFile. Also cached the ProFile read/write routines to make them fast enough for LisaFPGA's 75MHz DOTCK mode.
+// 8/21/2026  - v1.5 - Improved SD card access speeds by a factor of about 5 on average with the DUSE_SPI_ARRAY_TRANSFER build option.
+// 9/29/2026  - v1.6 - Works now on the "Apple ///" and with the "Titan /// Plus IIe" and "SoftCard ///" if you build with APPLE_III_ONLY set to 1.
+//                     Tested with the three types of .profile drivers I could find. .prof[#], .profile, and .cpm[#] on the Apple ///.
+//                     Tested, made some slight fixes, and now it works on the Apple IIe Profile card! Even boots from ProDOS 2.4.2
+//                     (* Gary Desrochers *)
 
 // Let's get one thing out of the way. If you are looking at the code and see indented #if <value> statements and are wondering why they are not all
 // the way to the left then let me explain.  The Arduino IDE at the point of writing this program has, what I would call, two weird bugs.
@@ -38,7 +36,11 @@ const size_t STATUS_BUFFER_SIZE = 4;
 const size_t CHECK_BYTE_BUFFER_SIZE = 6;
 const size_t FILE_NAME_BUFFER_SIZE = 256;
 const size_t FILE_EXTENSION_BUFFER_SIZE = 255;
+#if APPLE_III_ONLY
+const size_t PROFILE_SPARE_TABLE_SIZE = 21;
+#else
 const size_t PROFILE_SPARE_TABLE_SIZE = 48;
+#endif
 
 #define KVMoniker 1024 // The locations of the Selector moniker and autoboot flag in the ESP32's EEPROM
 #define KVAutoboot 1557
@@ -54,7 +56,11 @@ uint8_t commandBuffer[COMMAND_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 uint8_t checkBytesBuffer[CHECK_BYTE_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // The 6-byte returned after a write.
 uint8_t statusBuffer[STATUS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00};
 // The contents of the ProFile spare table
+#if APPLE_III_ONLY
+uint8_t spareTable[PROFILE_SPARE_TABLE_SIZE] = {0x52, 0x4F, 0x46, 0x49, 0x4C, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x03, 0x98, 0x00, 0x26, 0x00, 0x02}; //the array that holds the spare table
+#else
 uint8_t spareTable[PROFILE_SPARE_TABLE_SIZE] = {0x50, 0x52, 0x4F, 0x46, 0x49, 0x4C, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x03, 0x98, 0x00, 0x26, 0x00, 0x02, 0x14, 0x20, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x43, 0x61, 0x6D, 0x65, 0x6F, 0x2F, 0x41, 0x70, 0x68, 0x69, 0x64, 0x20, 0x30, 0x30, 0x30, 0x31}; //the array that holds the spare table
+#endif
 bool parityArray[256] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0}; // A lookup table for parity bits
 
 uint32_t blockNum; // The block that the current operation is being performed on
@@ -188,25 +194,39 @@ void emulatorLoop() {
   // Is this needed to be different from below? No.
   // Just treating it differently because the driver does.
   else if(commandBuffer[0] == 0xFF){
-    printCommand(); // Print the command that we didn't understand
     setParallelDir(1); // Set the bus to output mode
-    //delayMicroseconds(1);
 
-    // Apple /// does like to have a 0x01 returned on the 0xFF command.
-    sendData(0x01); // Put an invalid value on the bus to show that we didn't understand the command
-    sendParity(0x01); // And the appropriate parity bit for that value
+    // You might be asking why I am putting a 0x06 on the bus in this case. It is a valid question.
+    // Fortunately, I know the answer to this question.  If you did not know, for almost every command that
+    // the profile, possibly only my profile, drive sends/receives the last two bytes on the bus are
+    // always 0xFF and then 0x06.  I do not know why that is but it looks like a length specifier for
+    // all the other bytes sent. Here are some examples of the values always put on the bus vs the request
+    // that I know of:
+    // Reed Request - 0x00	0x00	0x00	0x00	0x0A	0x03 - trailing values on bus - 0xxx	0xFF	0xFF	0xFF	0xFF	0xFF	0xFF	0x06
+    // Read Catch Up - 0xFF	0x00	0x00	0x02	0x0A	0x03 - trailing values on bus - 0x03	0x03	0x03	0x03	0x03	0x03	0xFF	0x06
+    // Spare Table - 0x00	0xFF	0xFF	0xFF	0x0A	0x03 - trailing values on bus - None, based on table
+    // Spare Table Catch Up - 0xFF	0x00	0x26	0x00	0x0A	0x03 - trailing values on bus - None based on table
+    // Write Request - 0x02	0x00	0x00	0x0A	0x0A	0x03 - trailing values on bus - 0x00	0x00	0x00	0x00	0x00	0x00	0xFF	0x06
+    // Wriet Catch Up - 0xFF	0x00	0x00	0x09	0x0A	0x03 - trailing values on bus - 0x0F	0xFF	0xFF	0xFF	0xFF	0xFF	0xFF	0x06
+    // The importand of all of these is the Write Request.  The Write Request always strobes in the first four of these but all are there.
+    // These values below are not strobed in.  They are just put on the bus to make the last value be the same as the real drive.
+    // Also, the Write request always has either the 0x55 or 0xAA as its response.
+    sendData(0x06); // Put a known value on the bus to show that we are done like the Profile Drive does.
+    sendParity(0x06); // And the appropriate parity bit for that value
 
-    setBSY(); // And tell the host that it's there 
+    delayMicroseconds(5); // Since there is no strobe request, just let it sit there.  The profile lets it sit there for 10us before moving on.
+
+    printCommand(); // Print the command that we didn't understand
   }
   #endif
   else{ // If we get some other command, stop and wait for the next handshake from the host
-    printCommand(); // Print the command that we didn't understand
     setParallelDir(1); // Set the bus to output mode
     //delayMicroseconds(1);
     // Don't use 0x55 or 0xAA as an invalid value on the bus but 0x5A should be garbage.
     sendData(0x5A); // Put an invalid value on the bus to show that we didn't understand the command
     sendParity(0x5A); // And the appropriate parity bit for that value
-    setBSY(); // And tell the host that it's there
+    // No one will care much though. Just move onto the main loop top. If the driver cares it will reset the drive.
+    printCommand(); // Print the command that we didn't understand
   }
 }
 
@@ -240,15 +260,18 @@ IRAM_ATTR void sendMultiData() {
     currentState = bitRead(REG_READ(STRB_IN_REG), STRBPin); // Read the current state of STRB
     if(currentState == 1 and prevState == 0){ // If we see a rising edge on STRB, send the next byte
       #if !APPLE_III_ONLY
-        sendParity(blockData[bufferIndex]); // Send the parity for the byte
-        REG_WRITE(BUS_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
-        REG_WRITE(BUS_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // Then write the inverse of the byte into W1TC to clear all the bits that need to be cleared, and increment the buffer index
+      sendParity(blockData[bufferIndex]); // Send the parity for the byte
+      REG_WRITE(BUS_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
+      REG_WRITE(BUS_W1TC_REG, ((byte)~blockData[bufferIndex++] << busOffset)); // Then write the inverse of the byte into W1TC to clear all the bits that need to be cleared, and increment the buffer index
       #else
       // (APPLE_III_WRITE_SIZE+READ_STATUS_OFFSET) is the max. Don't keep putting out more just wait for CMD to go down.
       // On the Apple /// I was overflowing the whole blockData array.
       // Sometimes it was a pretty bad overflow of many bytes.
       // I think we should be putting some buffer overflow check bytes for
       // both sections of code and checking those sacrificial bytes randomly.
+      // This is not really how much is sent but it is the max.  for instance, when something like the spare table is requested, only 25 bytes
+      // are strobed in. Then cmd goes down and we stop.
+      // One thing to always remember is that the buffer in the Profile Drive is a max of 256 bytes.
       if (bufferIndex < (APPLE_III_WRITE_SIZE+READ_STATUS_OFFSET+CHECK_BYTE_BUFFER_SIZE))
       {
         REG_WRITE(BUS_W1TS_REG, blockData[bufferIndex] << busOffset); // Then write the byte into W1TS to set all the bits that need to be set
@@ -279,7 +302,7 @@ IRAM_ATTR void receiveCommand() {
 
 #if APPLE_III_ONLY
 // This function receives bytes from the host to form the write command check bytes, and is in IRAM for the same reason as sendMultiData
-// Apple /// sends four bytes, Titan Apple /// Apple IIe plus card sends only three (or maybe it is ProDOS?).
+// Apple /// sends four bytes, Titan Apple /// Apple IIe plus card sends only three.
 // Either way CMD goes down when finished. The real Profile drive does not seem to care either way.
 IRAM_ATTR void receiveCheckBytes() {
   checkBytesIndex = 0; // Always start out at zero.
@@ -732,11 +755,7 @@ void readDrive(){
     }
   }
   // If we end up here, then our command isn't a Selector command; it's just a good old-fashioned read
-  #if 1
   else if((blockNum*PROFILE_BLOCK_SIZE) < disk.fileSize()){ // Check that the block number is within the range of the disk image
-  #else
-  else if(blockNum < disk.fileSize()){ // Check that the block number is within the range of the disk image
-  #endif
     uint8_t blockHigh = (blockNum >> 8 & 0xFF);
     uint8_t blockLow = blockNum & 0xFF;
 
@@ -929,7 +948,6 @@ void writeDrive(){
   }
 
   // Host returned 0x55 so we are good. Continue!
-  // TODO: Shouldn't I check the status bytes?  Seems like I can to make sure I am okay.
 
   bool halt = false; // This flag will be set if the host wants to halt the emulator
   blockNum = (commandBuffer[1] << 16 | commandBuffer[2] << 8 | commandBuffer[3]); // Form a block number from bytes 1-3 of the command buffer
@@ -1269,7 +1287,7 @@ void sendWriteStatus()
   sendData(statusBuffer[statusBufferIndex]); // And put the status byte on the bus, incrementing the buffer index afterwards
   sendParity(statusBuffer[statusBufferIndex++]); // Put its parity info on the PARITY line
 
-    clearBSY(); // Raise BSY to tell the host that we're ready to continue
+  clearBSY(); // Raise BSY to tell the host that we're ready to continue
   // Now send the rest of the status bytes, with the appropriate parity for each byte
   sendWriteStatusBytes();
 }
