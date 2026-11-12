@@ -587,3 +587,5 @@ Feel free to email me at [alexelectronicsguy@gmail.com](mailto:alexelectronicsgu
 7/8/2026 - Reverted ESProFile emulator firmware back to the 4/19/2026 v1.4 version; the Apple /// compatibility added in v1.5 broke LisaFPGA when overclocked to max speed. The diagnostic firmware v1.2 upgrades were NOT reverted.
 
 8/21/2026 - Released ESProFile emulator firmware version 1.5, which improves SD card access speeds by a factor of about 5 on average.
+
+11/11/2026 - Released ESProFile emulator firmware version 1.6, which fixes a bug in the bounds check for read/write commands that would allow a block number that was out of bounds of the image to be accepted and read/written, leading to potential image corruption.
